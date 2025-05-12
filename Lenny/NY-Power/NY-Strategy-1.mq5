@@ -610,11 +610,15 @@ void ManagePositions() {
       ulong ticket = PositionGetTicket(i);
       if(ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
          ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
          double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
+         double currentPrice = (posType == POSITION_TYPE_BUY) ?
+                               SymbolInfoDouble(_Symbol, SYMBOL_BID) :
+                               SymbolInfoDouble(_Symbol, SYMBOL_ASK);
 
-         // close if two candles close below SMA
+         // close in profit if candle close below SMA or below swing low
          if(posType == POSITION_TYPE_BUY) {
-            if(prevClose < state.swingLows[0].price || !CheckIsAboveSMA(prevClose, SMA_Period)) {
+            if(currentPrice > openPrice && (prevClose < state.swingLows[0].price || !CheckIsAboveSMA(prevClose, SMA_Period))) {
                if(!trade.PositionClose(ticket)) {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
@@ -623,9 +627,9 @@ void ManagePositions() {
             }
          }
 
-         // close if two candles close above SMA
+         // close in profit if candle close above SMA or above swing high
          if(posType == POSITION_TYPE_SELL) {
-            if(prevClose > state.swingHighs[0].price || CheckIsAboveSMA(prevClose, SMA_Period)) {
+            if(currentPrice < openPrice  && (prevClose > state.swingHighs[0].price || CheckIsAboveSMA(prevClose, SMA_Period))) {
                if(!trade.PositionClose(ticket)) {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
