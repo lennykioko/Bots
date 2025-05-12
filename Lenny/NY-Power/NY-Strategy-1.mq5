@@ -72,12 +72,12 @@ StrategyState state;  // Main strategy state
 
 //--- Input parameters
 // Opening Range parameters
-input string     AsianStartTime = "01:00";       // 1800 NY = 0100 KE no DST (HH:MM)
-input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH:MM)
-input string     LondonStartTime = "07:00";       // 0000 NY = 0700 KE no DST (HH:MM)
-input string     LondonEndTime = "13:00";         // 0600 NY = 1300 KE no DST (HH:MM)
-input int        startTradingHour = 14;       // 0700 NY = 1400 KE no DST (24H)
-input int        endTradingHour = 19;         // 1200 NY = 1900 KE no DST (24H)
+input string     AsianStartTime = "18:00";       // 1800 NY = 0100 KE no DST (HH:MM)
+input string     AsianEndTime = "00:00";         // 0000 NY = 0700 KE no DST (HH:MM)
+input string     LondonStartTime = "00:00";       // 0000 NY = 0700 KE no DST (HH:MM)
+input string     LondonEndTime = "06:00";         // 0600 NY = 1300 KE no DST (HH:MM)
+input int        startTradingHour = 07;       // 0700 NY = 1400 KE no DST (24H)
+input int        endTradingHour = 12;         // 1200 NY = 1900 KE no DST (24H)
 
 // Market structure parameters
 input bool       DrawOnChart = true;          // Draw ranges on chart
@@ -143,6 +143,11 @@ void OnDeinit(const int reason) {
 //| Timer event function                                             |
 //+------------------------------------------------------------------+
 void OnTimer() {
+   if(!IsNYHour()) {
+      // If not in NY hour, do not execute trading logic
+      return;
+   }
+
    // Check if trading is allowed by system
    isTradingAllowedBySystem();
 
