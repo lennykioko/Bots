@@ -36,14 +36,12 @@ struct StrategyState {
    SwingPoint       swingHighs[];     // Swing high points
    SwingPoint       swingLows[];      // Swing low points
    double           keyLevels[];     // Key levels
-   int              lastRangeBarIndex;// Index of last range bar
    double           prevDayHigh;     // Previous day high
    double           prevDayLow;      // Previous day low
 
    // Position management
    double           entryPrice;       // Entry price for position
    double           stopLoss;         // Stop loss price
-   bool             partialClosed;    // Partial position closed flag
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
@@ -52,10 +50,8 @@ struct StrategyState {
 
    // Constructor with default values
    void StrategyState() {
-      lastRangeBarIndex = 0;
       entryPrice = 0.0;
       stopLoss = 0.0;
-      partialClosed = false;
       startDayBalance = 0.0;
       lastReset = 0;
       lastDisplayUpdate = 0;
@@ -152,7 +148,6 @@ void OnTimer() {
    if(state.lastReset == 0 || lastResetDT.day != dt.day || lastResetDT.mon != dt.mon || lastResetDT.year != dt.year) {
       state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       state.lastReset = now;
-      state.partialClosed = false; // Reset partial flag for the new day
       Print("New day detected. Starting Day balance reset to: ", DoubleToString(state.startDayBalance, 2));
    }
 
@@ -174,17 +169,19 @@ void OnTimer() {
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
    state.prevDayLow = iLow(_Symbol, PERIOD_D1, 1);
 
+   ArrayResize(state.keyLevels, 6);
+   state.keyLevels[0] = state.prevDayHigh;
+   state.keyLevels[1] = state.prevDayLow;
+   state.keyLevels[2] = state.asianRanges[0].high;
+   state.keyLevels[3] = state.asianRanges[0].low;
+   state.keyLevels[4] = state.londonRanges[0].high;
+   state.keyLevels[5] = state.londonRanges[0].low;
+
    // Draw horisontal lines for previous day high and low
    if(DrawOnChart) {
       DrawKeyLevel(state.prevDayHigh, "PDH", clrDodgerBlue);
       DrawKeyLevel(state.prevDayLow, "PDL", clrCrimson);
    }
-
-   state.lastRangeBarIndex = state.londonRanges[0].endBarIndex;
-
-   // Find FVGs after the london range scope
-   GetBullishFVGs(FVGLookBackBars, state.londonRanges[0].endBarIndex, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
-   GetBearishFVGs(FVGLookBackBars, state.londonRanges[0].endBarIndex, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
 
    // Process trading logic
    if(!HasActivePositionsOrOrders()) {
@@ -273,9 +270,10 @@ void UpdateDisplayInfo() {
    addTextOnScreen(fvgMsg, InfoTextColor);
 
    bool closeAboveSwingHigh = prevClose > state.swingHighs[0].price;
-   bool closeBelowSwingLow = prevClose < state.swingLows[0].price;
    string swingHighCondMsg = "Price vs Swing High: " + (closeAboveSwingHigh ? "ABOVE" : "BELOW");
    addTextOnScreen(swingHighCondMsg, closeAboveSwingHigh  ? PositiveCondColor : NegativeCondColor);
+
+   bool closeBelowSwingLow = prevClose < state.swingLows[0].price;
    string swingLowCondMsg = "Price vs Swing Low: " + (closeBelowSwingLow ? "BELOW" : "ABOVE");
    addTextOnScreen(swingLowCondMsg, closeBelowSwingLow ? PositiveCondColor : NegativeCondColor);
 
@@ -321,7 +319,7 @@ void ShowPositionDetails() {
                           " | TP: " + DoubleToString(tpPrice, _Digits);
          addTextOnScreen(slTpMsg, InfoTextColor);
 
-         // Profit and BE condition
+         // Profit condition
          string profitMsg = "Profit: $" + DoubleToString(profit, 2);
          color profitColor = (profit >= 0) ? PositiveCondColor : NegativeCondColor;
          addTextOnScreen(profitMsg, profitColor);
@@ -442,7 +440,7 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
       double keyLevel = keyLevels[i];
 
       // Check if recent swing highs are above THIS key level
-      bool swingHighsAbove = (swingHighs[1].price >= keyLevel || swingHighs[0].price >= keyLevel);
+      bool swingHighsAbove = (swingHighs[1].price >= keyLevel && swingHighs[0].price >= keyLevel);
 
       // Check if current price is below THIS SAME key level
       bool priceBelow = (prevClose < keyLevel);
@@ -469,7 +467,7 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
       double keyLevel = keyLevels[i];
 
       // Check if recent swing lows are below THIS key level
-      bool swingLowsBelow = (swingLows[1].price <= keyLevel || swingLows[0].price <= keyLevel);
+      bool swingLowsBelow = (swingLows[1].price <= keyLevel && swingLows[0].price <= keyLevel);
 
       // Check if current price is above THIS SAME key level
       bool priceAbove = (prevClose > keyLevel);
@@ -491,16 +489,6 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 TRADE_DIRECTION CheckForEntrySignals() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
-
-   ArrayResize(state.keyLevels, 6);
-   state.keyLevels[0] = state.prevDayHigh;
-   state.keyLevels[1] = state.prevDayLow;
-   state.keyLevels[2] = state.asianRanges[0].high;
-   state.keyLevels[3] = state.asianRanges[0].low;
-   state.keyLevels[4] = state.londonRanges[0].high;
-   state.keyLevels[5] = state.londonRanges[0].low;
-
-   Print("Key levels: ", state.keyLevels[0], ", ", state.keyLevels[1], ", ", state.keyLevels[2], ", ", state.keyLevels[3], ", ", state.keyLevels[4], ", ", state.keyLevels[5]);
 
    // LONG signal
    if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0) {
@@ -563,7 +551,6 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          // Store entry price for position management
          state.entryPrice = entryPrice;
          state.stopLoss = stopLoss;
-         state.partialClosed = false;
 
          // Execute buy order
          if(!trade.Buy(lotSize, _Symbol, 0, stopLoss, takeProfit, "NY-BUY")) {
@@ -586,7 +573,6 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          // Store entry price for position management
          state.entryPrice = entryPrice;
          state.stopLoss = stopLoss;
-         state.partialClosed = false;
 
          // Execute sell order
          if(!trade.Sell(lotSize, _Symbol, 0, stopLoss, takeProfit, "NY-SELL")) {
