@@ -35,7 +35,7 @@ struct StrategyState {
    FVG              bearishFVGs[];    // Bearish fair value gaps
    SwingPoint       swingHighs[];     // Swing high points
    SwingPoint       swingLows[];      // Swing low points
-   string           biasDirection;    // Current bias direction
+   double           keyLevels[];     // Key levels
    int              lastRangeBarIndex;// Index of last range bar
    double           prevDayHigh;     // Previous day high
    double           prevDayLow;      // Previous day low
@@ -54,7 +54,6 @@ struct StrategyState {
 
    // Constructor with default values
    void StrategyState() {
-      biasDirection = "";
       lastRangeBarIndex = 0;
       entryPrice = 0.0;
       stopLoss = 0.0;
@@ -195,7 +194,6 @@ void OnTimer() {
    }
 
    state.lastRangeBarIndex = state.londonRanges[0].endBarIndex;
-   state.biasDirection = state.londonRanges[0].type;
 
    // Find FVGs after the london range scope
    GetBullishFVGs(FVGLookBackBars, state.londonRanges[0].endBarIndex, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
@@ -228,9 +226,6 @@ void DrawKeyLevel(double price, string name, color clr) {
 void UpdateDisplayInfo() {
    clearTextDisplay();
 
-   // Show basic strategy information
-   addTextOnScreen("NY-Strategy-1 Status", InfoTextColor);
-
    // Show trading session info
    string tradeHoursMsg = "Trading Hours: " + IntegerToString(startTradingHour) + ":00 - " + IntegerToString(endTradingHour) + ":00";
    addTextOnScreen(tradeHoursMsg, InfoTextColor);
@@ -256,9 +251,6 @@ void UpdateDisplayInfo() {
 
    // Show market structure
    if(ArraySize(state.asianRanges) > 0) {
-      string orMsg = "AR Type: " + state.biasDirection;
-      addTextOnScreen(orMsg, InfoTextColor);
-
       string rangeMsg = "AR High: " + DoubleToString(state.asianRanges[0].high, _Digits) +
                         " Mid: " + DoubleToString(state.asianRanges[0].middle, _Digits) +
                         " Low: " + DoubleToString(state.asianRanges[0].low, _Digits);
@@ -271,6 +263,11 @@ void UpdateDisplayInfo() {
                         " Low: " + DoubleToString(state.londonRanges[0].low, _Digits);
       addTextOnScreen(rangeMsg2, InfoTextColor);
    }
+
+   // show previous day high and low
+   string prevDayMsg = "PDH: " + DoubleToString(state.prevDayHigh, _Digits) +
+                        " PDL: " + DoubleToString(state.prevDayLow, _Digits);
+   addTextOnScreen(prevDayMsg, InfoTextColor);
 
    // Show current price vs. MA
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
@@ -351,7 +348,6 @@ void ShowPositionDetails() {
 //| Show current signal conditions                                   |
 //+------------------------------------------------------------------+
 void ShowSignalConditions() {
-   if(ArraySize(state.londonRanges) == 0) return;
 
    addTextOnScreen("=== SIGNAL CONDITIONS ===", InfoTextColor);
 
@@ -362,39 +358,39 @@ void ShowSignalConditions() {
 
    // Long conditions
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
-   bool aboveMiddle = (prevClose > state.londonRanges[0].middle);
+   bool swingLowsRejLevel = SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose);
    bool hasBullishFVGs = (ArraySize(state.bullishFVGs) > 0);
 
    string longCondMsg = "LONG Signal Conditions:";
    addTextOnScreen(longCondMsg, InfoTextColor);
 
    string aboveSMAMsg = "- Price Above SMA" + IntegerToString(SMA_Period) + ": " + (aboveSMA ? "YES" : "NO");
-   string aboveMiddleMsg = "- Price Above LR Middle: " + (aboveMiddle ? "YES" : "NO");
    string bullishFVGMsg = "- Bullish FVGs Present: " + (hasBullishFVGs ? "YES" : "NO");
+   string swingLowsRejLevelMsg = "- Swing Lows rej KeyLev: " + (swingLowsRejLevel ? "YES" : "NO");
 
    addTextOnScreen(aboveSMAMsg, aboveSMA ? PositiveCondColor : NegativeCondColor);
-   addTextOnScreen(aboveMiddleMsg, aboveMiddle ? PositiveCondColor : NegativeCondColor);
    addTextOnScreen(bullishFVGMsg, hasBullishFVGs ? PositiveCondColor : NegativeCondColor);
+   addTextOnScreen(swingLowsRejLevelMsg, swingLowsRejLevel ? PositiveCondColor : NegativeCondColor);
 
    // Short conditions
    bool belowSMA = !aboveSMA;
-   bool belowMiddle = (prevClose < state.londonRanges[0].middle);
+   bool swingHighsRejLevel = SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose);
    bool hasBearishFVGs = (ArraySize(state.bearishFVGs) > 0);
 
    string shortCondMsg = "SHORT Signal Conditions:";
    addTextOnScreen(shortCondMsg, InfoTextColor);
 
    string belowSMAMsg = "- Price Below SMA" + IntegerToString(SMA_Period) + ": " + (belowSMA ? "YES" : "NO");
-   string belowMiddleMsg = "- Price Below LR Middle: " + (belowMiddle ? "YES" : "NO");
    string bearishFVGMsg = "- Bearish FVGs Present: " + (hasBearishFVGs ? "YES" : "NO");
+   string swingHighsRejLevelMsg = "- Swing Highs rej KeyLev: " + (swingHighsRejLevel ? "YES" : "NO");
 
    addTextOnScreen(belowSMAMsg, belowSMA ? PositiveCondColor : NegativeCondColor);
-   addTextOnScreen(belowMiddleMsg, belowMiddle ? PositiveCondColor : NegativeCondColor);
    addTextOnScreen(bearishFVGMsg, hasBearishFVGs ? PositiveCondColor : NegativeCondColor);
+   addTextOnScreen(swingHighsRejLevelMsg, swingHighsRejLevel ? PositiveCondColor : NegativeCondColor);
 
    // Overall signal status
-   bool longSignalValid =  aboveSMA && aboveMiddle && hasBullishFVGs && tradingConditionsValid;
-   bool shortSignalValid = belowSMA && belowMiddle && hasBearishFVGs && tradingConditionsValid;
+   bool longSignalValid =  aboveSMA && swingLowsRejLevel && hasBullishFVGs && tradingConditionsValid;
+   bool shortSignalValid = belowSMA && swingHighsRejLevel && hasBearishFVGs && tradingConditionsValid;
 
    string signalStatusMsg = "Ready to Trade: ";
    if(longSignalValid) signalStatusMsg += "LONG";
@@ -450,6 +446,60 @@ bool AccountRiskValid() {
    return !(lossExceeded || targetReached);
 }
 
+bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], double prevClose) {
+   // Check if we have at least 2 swing highs and 1 key level
+   if(ArraySize(swingHighs) < 2 || ArraySize(keyLevels) < 1) {
+      return false;
+   }
+
+   // Loop through each key level
+   for(int i = 0; i < ArraySize(keyLevels); i++) {
+      double keyLevel = keyLevels[i];
+
+      // Check if recent swing highs are above THIS key level
+      bool swingHighsAbove = (swingHighs[1].price >= keyLevel || swingHighs[0].price >= keyLevel);
+
+      // Check if current price is below THIS SAME key level
+      bool priceBelow = (prevClose < keyLevel);
+
+      // If both conditions are true for this key level, return true
+      if(swingHighsAbove && priceBelow) {
+         Print("Found Key level reaction at: ", DoubleToString(keyLevel, _Digits) + " at index: " + DoubleToString(i));
+         return true;
+      }
+   }
+
+   // No key level met both conditions
+   return false;
+}
+
+bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], double prevClose) {
+   // Check if we have at least 2 swing lows and 1 key level
+   if(ArraySize(swingLows) < 2 || ArraySize(keyLevels) < 1) {
+      return false;
+   }
+
+   // Loop through each key level
+   for(int i = 0; i < ArraySize(keyLevels); i++) {
+      double keyLevel = keyLevels[i];
+
+      // Check if recent swing lows are below THIS key level
+      bool swingLowsBelow = (swingLows[1].price <= keyLevel || swingLows[0].price <= keyLevel);
+
+      // Check if current price is above THIS SAME key level
+      bool priceAbove = (prevClose > keyLevel);
+
+      // If both conditions are true for this key level, return true
+      if(swingLowsBelow && priceAbove) {
+         Print("Found Key level reaction at: ", DoubleToString(keyLevel, _Digits) + " at index: " + DoubleToString(i));
+         return true;
+      }
+   }
+
+   // No key level met both conditions
+   return false;
+}
+
 //+------------------------------------------------------------------+
 //| Check for entry signals                                          |
 //+------------------------------------------------------------------+
@@ -457,14 +507,15 @@ TRADE_DIRECTION CheckForEntrySignals() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
 
-   double keyLevels[];
-   ArrayResize(keyLevels, 6);
-   keyLevels[0] = state.prevDayHigh;
-   keyLevels[1] = state.prevDayLow;
-   keyLevels[2] = state.asianRanges[0].high;
-   keyLevels[3] = state.asianRanges[0].low;
-   keyLevels[4] = state.londonRanges[0].high;
-   keyLevels[5] = state.londonRanges[0].low;
+   ArrayResize(state.keyLevels, 6);
+   state.keyLevels[0] = state.prevDayHigh;
+   state.keyLevels[1] = state.prevDayLow;
+   state.keyLevels[2] = state.asianRanges[0].high;
+   state.keyLevels[3] = state.asianRanges[0].low;
+   state.keyLevels[4] = state.londonRanges[0].high;
+   state.keyLevels[5] = state.londonRanges[0].low;
+
+   Print("Key levels: ", state.keyLevels[0], ", ", state.keyLevels[1], ", ", state.keyLevels[2], ", ", state.keyLevels[3], ", ", state.keyLevels[4], ", ", state.keyLevels[5]);
 
    // LONG signal
    if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0) {
@@ -473,11 +524,9 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
          if(ArraySize(state.bullishFVGs) >= 1) {
             Print("Found at least 1 bullish FVGs after swing low below SMA");
-            for(int i = 0; i < ArraySize(keyLevels); i++) {
-               if((state.swingLows[1].price <= keyLevels[i] || state.swingLows[0].price <= keyLevels[i]) && prevClose > keyLevels[i]) {
-                  Print("Reacting off key level: ", keyLevels[i]);
-                  return LONG;
-               }
+            if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
+               Print("Found swing lows rejecting key level");
+               return LONG;
             }
          }
       }
@@ -490,11 +539,9 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
          if(ArraySize(state.bearishFVGs) >= 1) {
             Print("Found at least 1 bearish FVGs after swing high above SMA");
-            for(int i = 0; i < ArraySize(keyLevels); i++) {
-               if((state.swingHighs[1].price >= keyLevels[i] || state.swingHighs[0].price >= keyLevels[i]) && prevClose < keyLevels[i]) {
-                  Print("Reacting off key level: ", keyLevels[i]);
-                  return SHORT;
-               }
+            if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
+               Print("Found swing highs rejecting key level");
+               return SHORT;
             }
          }
       }
