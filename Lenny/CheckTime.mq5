@@ -16,6 +16,7 @@
 //+------------------------------------------------------------------+
 int OnInit() {
     EventSetTimer(1);
+    clearTextDisplay();
     Print("CheckTime initialized successfully");
     return(INIT_SUCCEEDED);
 }
