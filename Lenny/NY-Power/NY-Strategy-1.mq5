@@ -42,6 +42,7 @@ struct StrategyState {
    // Position management
    double           entryPrice;       // Entry price for position
    double           stopLoss;         // Stop loss price
+   double           beRRR;           // Breakeven risk to reward ratio
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
@@ -52,6 +53,7 @@ struct StrategyState {
    void StrategyState() {
       entryPrice = 0.0;
       stopLoss = 0.0;
+      beRRR = 1.0;
       startDayBalance = 0.0;
       lastReset = 0;
       lastDisplayUpdate = 0;
@@ -84,6 +86,10 @@ input double     MinRRR = 2.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
 
+// Position management parameters
+input bool       UseBreakeven = true;        // Use breakeven for positions
+input double     beRRR = 1.0;                // Breakeven risk to reward ratio
+
 // Display parameters
 input bool       ShowTextOnChart = true;      // Show strategy conditions on chart
 input int        DisplayUpdateInterval = 5;   // Update display every N seconds
@@ -101,6 +107,7 @@ int OnInit() {
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   state.beRRR = BeRRR;
 
    // Initialize display
    if(ShowTextOnChart) {
@@ -173,8 +180,10 @@ void OnTimer() {
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
+   state.keyLevels[3] = state.asianRanges[0].middle;
    state.keyLevels[3] = state.asianRanges[0].low;
    state.keyLevels[4] = state.londonRanges[0].high;
+   state.keyLevels[4] = state.londonRanges[0].middle;
    state.keyLevels[5] = state.londonRanges[0].low;
 
    // Draw horisontal lines for previous day high and low
@@ -543,7 +552,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         stopLoss = MathMax(state.swingLows[0].price, state.swingLows[1].price) - (BufferPips * GetPipValue());
+         stopLoss = MathMax(state.swingLows[0].price, state.swingLows[1].price) - (BufferPips * GetPipValue()); // the smaller risk
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
@@ -564,7 +573,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-         stopLoss = MathMin(state.swingHighs[0].price, state.swingHighs[1].price) + (BufferPips * GetPipValue());
+         stopLoss = MathMin(state.swingHighs[0].price, state.swingHighs[1].price) + (BufferPips * GetPipValue()); // the smaller risk
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
@@ -590,6 +599,10 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 //| Manage existing positions                                        |
 //+------------------------------------------------------------------+
 void ManagePositions() {
+   if(UseBreakeven) {
+      MoveSymbolStopLossToBreakeven(state.beRRR);
+   }
+
    for(int i = 0; i < PositionsTotal(); i++) {
       ulong ticket = PositionGetTicket(i);
       if(ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
