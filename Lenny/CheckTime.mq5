@@ -25,7 +25,7 @@ void OnDeinit(const int reason) {
 //+------------------------------------------------------------------+
 //| Expert tick function                                               |
 //+------------------------------------------------------------------+
-void OnTick() {
+void OnTimer() {
     datetime currentTime = TimeCurrent();
     string timeStr = TimeToString(currentTime, TIME_DATE|TIME_MINUTES|TIME_SECONDS);
     Print("Current time: ", timeStr);
