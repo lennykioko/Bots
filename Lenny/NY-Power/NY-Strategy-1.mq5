@@ -502,7 +502,6 @@ TRADE_DIRECTION CheckForEntrySignals() {
                return LONG;
             }
          }
-         }
       }
    }
 
@@ -517,7 +516,6 @@ TRADE_DIRECTION CheckForEntrySignals() {
                Print("Found swing highs rejecting key level");
                return SHORT;
             }
-         }
          }
       }
    }
