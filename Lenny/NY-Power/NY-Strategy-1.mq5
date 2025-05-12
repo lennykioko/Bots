@@ -43,8 +43,6 @@ struct StrategyState {
    // Position management
    double           entryPrice;       // Entry price for position
    double           stopLoss;         // Stop loss price
-   double           beRRR;            // Breakeven risk-reward ratio
-   double           partialRRR;       // Partial take-profit risk-reward ratio
    bool             partialClosed;    // Partial position closed flag
 
    // Session management
@@ -57,8 +55,6 @@ struct StrategyState {
       lastRangeBarIndex = 0;
       entryPrice = 0.0;
       stopLoss = 0.0;
-      beRRR = 1.0;
-      partialRRR = 1.0;
       partialClosed = false;
       startDayBalance = 0.0;
       lastReset = 0;
@@ -92,13 +88,6 @@ input double     MinRRR = 5.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 300;          // Maximum daily loss in account currency
 input double     DailyTarget = 300;           // Daily target in account currency
 
-// Position management parameters
-input bool       UseBreakeven = true;         // Move to breakeven
-input double     BeRRR = 0.1;                 // Risk-reward ratio for breakeven
-input bool       UsePartialProfit = true;     // Take partial profit
-input double     PartialRRR = 0.1;            // Risk-reward ratio for partial profit
-input double     PartialPercent = 1.0;        // Percentage to close on partial
-
 // Display parameters
 input bool       ShowTextOnChart = true;      // Show strategy conditions on chart
 input int        DisplayUpdateInterval = 5;   // Update display every N seconds
@@ -112,12 +101,10 @@ input color      NegativeCondColor = clrRed;  // Negative condition text color
 int OnInit() {
    // Clear chart objects and set timer
    ObjectsDeleteAll(ChartID(), "");
-   EventSetTimer(20);
+   EventSetTimer(5);
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-   state.beRRR = BeRRR;
-   state.partialRRR = PartialRRR;
 
    // Initialize display
    if(ShowTextOnChart) {
@@ -285,6 +272,13 @@ void UpdateDisplayInfo() {
                    IntegerToString(ArraySize(state.bearishFVGs)) + " Bearish";
    addTextOnScreen(fvgMsg, InfoTextColor);
 
+   bool closeAboveSwingHigh = prevClose > state.swingHighs[0].price;
+   bool closeBelowSwingLow = prevClose < state.swingLows[0].price;
+   string swingHighCondMsg = "Price vs Swing High: " + (closeAboveSwingHigh ? "ABOVE" : "BELOW");
+   addTextOnScreen(swingHighCondMsg, closeAboveSwingHigh  ? PositiveCondColor : NegativeCondColor);
+   string swingLowCondMsg = "Price vs Swing Low: " + (closeBelowSwingLow ? "BELOW" : "ABOVE");
+   addTextOnScreen(swingLowCondMsg, closeBelowSwingLow ? PositiveCondColor : NegativeCondColor);
+
    // Show position details or signal conditions
    if(HasActivePositionsOrOrders()) {
       ShowPositionDetails();
@@ -331,20 +325,6 @@ void ShowPositionDetails() {
          string profitMsg = "Profit: $" + DoubleToString(profit, 2);
          color profitColor = (profit >= 0) ? PositiveCondColor : NegativeCondColor;
          addTextOnScreen(profitMsg, profitColor);
-
-         // BE condition
-         string beCondMsg = "";
-         if(UseBreakeven && !state.partialClosed) {
-            beCondMsg = "BE Status: " + (slPrice == openPrice ? "ACTIVE" : "WAITING"); // use == to allow both sell & buy
-            addTextOnScreen(beCondMsg, (slPrice == openPrice) ? PositiveCondColor : InfoTextColor);
-         }
-
-         // Partial profit condition
-         string partialMsg = "";
-         if(UsePartialProfit) {
-            partialMsg = "Partial Status: " + (state.partialClosed ? "TAKEN" : "WAITING");
-            addTextOnScreen(partialMsg, state.partialClosed ? PositiveCondColor : InfoTextColor);
-         }
       }
    }
 }
@@ -630,32 +610,26 @@ void ManagePositions() {
       ulong ticket = PositionGetTicket(i);
       if(ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
          ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
-         double currentClose = iClose(_Symbol, PERIOD_CURRENT, 0);
+         double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
 
          // close if two candles close below SMA
          if(posType == POSITION_TYPE_BUY) {
-            if(currentClose < state.swingLows[0].price || !CheckIsAboveSMA(currentClose, SMA_Period)) {
-               if(UseBreakeven) MoveSymbolStopLossToBreakeven(state.beRRR);
-               // Take partial profit if condition met and not already taken
-               if(UsePartialProfit && !state.partialClosed) {
-                  state.partialClosed = TakePartialProfit(state.partialRRR, PartialPercent);
-                  if(state.partialClosed) {
-                     Print("Partial profit taken");
-                  }
+            if(prevClose < state.swingLows[0].price || !CheckIsAboveSMA(prevClose, SMA_Period)) {
+               if(!trade.PositionClose(ticket)) {
+                  Print("Failed to close long position. Error: ", GetLastError());
+               } else {
+                  Print("Long position closed successfully. Ticket: ", ticket);
                }
             }
          }
 
          // close if two candles close above SMA
          if(posType == POSITION_TYPE_SELL) {
-            if(currentClose > state.swingHighs[0].price || CheckIsAboveSMA(currentClose, SMA_Period)) {
-               if(UseBreakeven) MoveSymbolStopLossToBreakeven(state.beRRR);
-               // Take partial profit if condition met and not already taken
-               if(UsePartialProfit && !state.partialClosed) {
-                  state.partialClosed = TakePartialProfit(state.partialRRR, PartialPercent);
-                  if(state.partialClosed) {
-                     Print("Partial profit taken");
-                  }
+            if(prevClose > state.swingHighs[0].price || CheckIsAboveSMA(prevClose, SMA_Period)) {
+               if(!trade.PositionClose(ticket)) {
+                  Print("Failed to close long position. Error: ", GetLastError());
+               } else {
+                  Print("Long position closed successfully. Ticket: ", ticket);
                }
             }
          }

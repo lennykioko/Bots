@@ -15,7 +15,7 @@
 //| Expert initialization function                                      |
 //+------------------------------------------------------------------+
 int OnInit() {
-    EventSetTimer(1);
+    EventSetTimer(5);
     clearTextDisplay();
     Print("CheckTime initialized successfully");
     return(INIT_SUCCEEDED);
