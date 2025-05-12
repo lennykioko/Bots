@@ -6,11 +6,17 @@
 #property copyright "Copyright 2025"
 #property link      "https://www.yourwebsite.com"
 #property version   "1.00"
+#property strict
+
+#include <Helpers\TextDisplay.mqh>
+
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                      |
 //+------------------------------------------------------------------+
 int OnInit() {
+    EventSetTimer(1);
+    Print("CheckTime initialized successfully");
     return(INIT_SUCCEEDED);
 }
 
@@ -19,7 +25,8 @@ int OnInit() {
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason) {
     // Cleanup code if needed
-    Print("Expert deinitialized.");
+    EventKillTimer();
+    Print("CheckTime deinitialized.");
 }
 
 //+------------------------------------------------------------------+
@@ -29,4 +36,5 @@ void OnTimer() {
     datetime currentTime = TimeCurrent();
     string timeStr = TimeToString(currentTime, TIME_DATE|TIME_MINUTES|TIME_SECONDS);
     Print("Current time: ", timeStr);
+    addTextOnScreen(timeStr, clrWhite);
 }

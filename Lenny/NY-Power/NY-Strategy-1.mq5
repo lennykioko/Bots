@@ -112,7 +112,7 @@ input color      NegativeCondColor = clrRed;  // Negative condition text color
 int OnInit() {
    // Clear chart objects and set timer
    ObjectsDeleteAll(ChartID(), "");
-   EventSetTimer(60);
+   EventSetTimer(1);
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
