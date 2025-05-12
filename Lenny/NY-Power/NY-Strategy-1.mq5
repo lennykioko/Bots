@@ -188,6 +188,12 @@ void OnTimer() {
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
    state.prevDayLow = iLow(_Symbol, PERIOD_D1, 1);
 
+   // Draw horisontal lines for previous day high and low
+   if(DrawOnChart) {
+      DrawKeyLevel(state.prevDayHigh, "PDH", clrDodgerBlue);
+      DrawKeyLevel(state.prevDayLow, "PDL", clrCrimson);
+   }
+
    state.lastRangeBarIndex = state.londonRanges[0].endBarIndex;
    state.biasDirection = state.londonRanges[0].type;
 
@@ -201,6 +207,19 @@ void OnTimer() {
    } else {
       ManagePositions();
    }
+}
+
+void DrawKeyLevel(double price, string name, color clr) {
+   if(!ObjectDelete(0, name)) {
+      Print("Failed to delete line", GetLastError());
+   }
+   if(!ObjectCreate(0, name, OBJ_HLINE, 0, 0, price)) {
+      Print("Failed to create object: ", GetLastError());
+   }
+   ObjectSetInteger(0, name, OBJPROP_COLOR, clr);
+   ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DASH);
+   ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+   ObjectSetString(0, name, OBJPROP_TOOLTIP, "Name: " + name + DoubleToString(price, _Digits));
 }
 
 //+------------------------------------------------------------------+
@@ -458,7 +477,6 @@ TRADE_DIRECTION CheckForEntrySignals() {
                if((state.swingLows[1].price <= keyLevels[i] || state.swingLows[0].price <= keyLevels[i]) && prevClose > keyLevels[i]) {
                   Print("Reacting off key level: ", keyLevels[i]);
                   return LONG;
-                  break;
                }
             }
          }
@@ -476,7 +494,6 @@ TRADE_DIRECTION CheckForEntrySignals() {
                if((state.swingHighs[1].price >= keyLevels[i] || state.swingHighs[0].price >= keyLevels[i]) && prevClose < keyLevels[i]) {
                   Print("Reacting off key level: ", keyLevels[i]);
                   return SHORT;
-                  break;
                }
             }
          }
