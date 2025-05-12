@@ -88,7 +88,7 @@ input double     DailyTarget = 200;           // Daily target in account currenc
 
 // Position management parameters
 input bool       UseBreakeven = true;        // Use breakeven for positions
-input double     beRRR = 1.0;                // Breakeven risk to reward ratio
+input double     BeRRR = 1.0;                // Breakeven risk to reward ratio
 
 // Display parameters
 input bool       ShowTextOnChart = true;      // Show strategy conditions on chart
