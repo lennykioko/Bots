@@ -36,5 +36,6 @@ void OnTimer() {
     datetime currentTime = TimeCurrent();
     string timeStr = TimeToString(currentTime, TIME_DATE|TIME_MINUTES|TIME_SECONDS);
     Print("Current time: ", timeStr);
+    clearTextDisplay();
     addTextOnScreen(timeStr, clrWhite);
 }
