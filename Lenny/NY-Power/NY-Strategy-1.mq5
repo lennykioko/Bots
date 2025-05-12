@@ -80,7 +80,7 @@ input double     BufferPips = 1.0;            // Buffer in pips for stop loss
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
-input double     MinRRR = 5.0;                // Minimum risk to reward ratio
+input double     MinRRR = 2.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
 
@@ -495,11 +495,14 @@ TRADE_DIRECTION CheckForEntrySignals() {
       if(!CheckIsAboveSMA(state.swingLows[1].price, SMA_Period) && !CheckIsAboveSMA(state.swingLows[0].price, SMA_Period)) {
          Print("Found swing lows below SMA");
          GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
-         if(ArraySize(state.bullishFVGs) >= 2) {
-            Print("Found at least 1 bullish FVGs after swing low below SMA");
-            if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
-               Print("Found swing lows rejecting key level");
-               return LONG;
+         if(prevClose >= state.swingHighs[0].price || prevClose >= state.swingHighs[1].price) {
+            Print("Found close above swing high");
+            if(ArraySize(state.bullishFVGs) >= 1) {
+               Print("Found at least 1 bullish FVGs after swing low below SMA");
+               if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
+                  Print("Found swing lows rejecting key level");
+                  return LONG;
+               }
             }
          }
       }
@@ -510,11 +513,14 @@ TRADE_DIRECTION CheckForEntrySignals() {
       if(CheckIsAboveSMA(state.swingHighs[1].price, SMA_Period) && CheckIsAboveSMA(state.swingHighs[0].price, SMA_Period)) {
          Print("Found swing highs above SMA");
          GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
-         if(ArraySize(state.bearishFVGs) >= 2) {
-            Print("Found at least 1 bearish FVGs after swing high above SMA");
-            if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
-               Print("Found swing highs rejecting key level");
-               return SHORT;
+         if(prevClose <= state.swingLows[0].price || prevClose <= state.swingLows[1].price) {
+            Print("Found close below swing low");
+            if(ArraySize(state.bearishFVGs) >= 1) {
+               Print("Found at least 1 bearish FVGs after swing high above SMA");
+               if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
+                  Print("Found swing highs rejecting key level");
+                  return SHORT;
+               }
             }
          }
       }
@@ -543,9 +549,8 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         stopLoss = iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar - 1) - (BufferPips * GetPipValue());
-         // takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
-         takeProfit = 0.0; // No take profit for now
+         stopLoss = MathMin(state.swingLows[0].price, state.swingLows[1].price) - (BufferPips * GetPipValue());
+         takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
          // Store entry price for position management
@@ -565,9 +570,8 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-         stopLoss = iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar - 1) + (BufferPips * GetPipValue());
-         // takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
-         takeProfit = 0.0; // No take profit for now
+         stopLoss = MathMax(state.swingHighs[0].price, state.swingHighs[1].price) + (BufferPips * GetPipValue());
+         takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
          // Store entry price for position management
