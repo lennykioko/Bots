@@ -509,10 +509,10 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
          if(ArraySize(state.bullishFVGs) >= 1) {
             Print("Found at least 1 bullish FVGs after swing low below SMA");
-            if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
-               Print("Found swing lows rejecting key level");
-               return LONG;
-            }
+            return LONG;
+            // if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
+            //    Print("Found swing lows rejecting key level");
+            // }
          }
       }
    }
@@ -524,10 +524,10 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
          if(ArraySize(state.bearishFVGs) >= 1) {
             Print("Found at least 1 bearish FVGs after swing high above SMA");
-            if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
-               Print("Found swing highs rejecting key level");
-               return SHORT;
-            }
+            return SHORT;
+            // if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
+            //    Print("Found swing highs rejecting key level");
+            // }
          }
       }
    }
