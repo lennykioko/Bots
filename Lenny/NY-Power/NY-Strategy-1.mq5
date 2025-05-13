@@ -449,16 +449,11 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
 
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
-      if(i - 1 < 0 || i + 1 > ArraySize(keyLevels)) {
-         continue;
-      } else {
-         bool isSwingOneReacting = (keyLevels[i + 1] - swingHighs[0].price) < (swingHighs[0].price - keyLevels[i]);
-         bool isSwingTwoReacting = (keyLevels[i + 1] - swingHighs[1].price) < (swingHighs[1].price - keyLevels[i]);
-         bool isPrevCloseReacting = (keyLevels[i + 1] - prevClose) < (prevClose - keyLevels[i]);
+      double keyLevel = keyLevels[i];
 
-         // If both conditions are true for this key level, return true
-         if(isSwingOneReacting || isSwingTwoReacting || isPrevCloseReacting) {
-            Print("Found Key level reaction at: ", DoubleToString(keyLevels[i], _Digits) + " at index: " + DoubleToString(i));
+      if(MathMax(swingHighs[0].price, swingHighs[1].price) >= keyLevel && keyLevel > prevClose) {
+         if(CheckIsAboveSMA(iClose(_Symbol, PERIOD_CURRENT, 3), SMA_Period) && !CheckIsAboveSMA(prevClose, SMA_Period)) {
+            Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
             return true;
          }
       }
@@ -476,16 +471,11 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
-      if(i - 1 < 0 || i + 1 > ArraySize(keyLevels)) {
-         continue;
-      } else {
-         bool isSwingOneReacting = (swingLows[0].price - keyLevels[i]) < (keyLevels[i + 1] - swingLows[0].price);
-         bool isSwingTwoReacting = (swingLows[1].price - keyLevels[i]) < (keyLevels[i + 1] - swingLows[1].price);
-         bool isPrevCloseReacting = (prevClose - keyLevels[i]) < (keyLevels[i + 1] - prevClose);
+      double keyLevel = keyLevels[i];
 
-         // If both conditions are true for this key level, return true
-         if(isSwingOneReacting || isSwingTwoReacting || isPrevCloseReacting) {
-            Print("Found Key level reaction at: ", DoubleToString(keyLevels[i], _Digits) + " at index: " + DoubleToString(i));
+      if(MathMin(swingLows[0].price, swingLows[1].price) <= keyLevel && prevClose > keyLevel) {
+         if(!CheckIsAboveSMA(iClose(_Symbol, PERIOD_CURRENT, 3), SMA_Period) && CheckIsAboveSMA(prevClose, SMA_Period)) {
+            Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
             return true;
          }
       }
@@ -509,10 +499,10 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
          if(ArraySize(state.bullishFVGs) >= 1) {
             Print("Found at least 1 bullish FVGs after swing low below SMA");
-            return LONG;
-            // if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
-            //    Print("Found swing lows rejecting key level");
-            // }
+            if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
+               Print("Found swing lows rejecting key level");
+               return LONG;
+            }
          }
       }
    }
@@ -524,10 +514,10 @@ TRADE_DIRECTION CheckForEntrySignals() {
          GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
          if(ArraySize(state.bearishFVGs) >= 1) {
             Print("Found at least 1 bearish FVGs after swing high above SMA");
-            return SHORT;
-            // if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
-            //    Print("Found swing highs rejecting key level");
-            // }
+            if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
+               Print("Found swing highs rejecting key level");
+               return SHORT;
+            }
          }
       }
    }
