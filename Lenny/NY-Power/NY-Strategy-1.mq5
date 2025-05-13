@@ -180,11 +180,12 @@ void OnTimer() {
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
-   state.keyLevels[3] = state.asianRanges[0].middle;
    state.keyLevels[3] = state.asianRanges[0].low;
    state.keyLevels[4] = state.londonRanges[0].high;
-   state.keyLevels[4] = state.londonRanges[0].middle;
    state.keyLevels[5] = state.londonRanges[0].low;
+
+   // sort the key levels
+   ArraySort(state.keyLevels);
 
    // Draw horisontal lines for previous day high and low
    if(DrawOnChart) {
@@ -446,18 +447,18 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
 
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
-      double keyLevel = keyLevels[i];
+      if(i - 1 < 0 || i + 1 > ArraySize(keyLevels)) {
+         continue;
+      } else {
+         bool isSwingOneReacting = (keyLevels[i + 1] - swingHighs[0].price) < (swingHighs[0].price - keyLevels[i]);
+         bool isSwingTwoReacting = (keyLevels[i + 1] - swingHighs[1].price) < (swingHighs[1].price - keyLevels[i]);
+         bool isPrevCloseReacting = (keyLevels[i + 1] - prevClose) < (prevClose - keyLevels[i]);
 
-      // Check if recent swing highs are above THIS key level
-      bool swingHighsAbove = (swingHighs[1].price >= keyLevel && swingHighs[0].price >= keyLevel);
-
-      // Check if current price is below THIS SAME key level
-      bool priceBelow = (prevClose < keyLevel);
-
-      // If both conditions are true for this key level, return true
-      if(swingHighsAbove && priceBelow) {
-         Print("Found Key level reaction at: ", DoubleToString(keyLevel, _Digits) + " at index: " + DoubleToString(i));
-         return true;
+         // If both conditions are true for this key level, return true
+         if(isSwingOneReacting || isSwingTwoReacting || isPrevCloseReacting) {
+            Print("Found Key level reaction at: ", DoubleToString(keyLevels[i], _Digits) + " at index: " + DoubleToString(i));
+            return true;
+         }
       }
    }
 
@@ -473,18 +474,18 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
-      double keyLevel = keyLevels[i];
+      if(i - 1 < 0 || i + 1 > ArraySize(keyLevels)) {
+         continue;
+      } else {
+         bool isSwingOneReacting = (swingLows[0].price - keyLevels[i]) < (keyLevels[i + 1] - swingLows[0].price);
+         bool isSwingTwoReacting = (swingLows[1].price - keyLevels[i]) < (keyLevels[i + 1] - swingLows[1].price);
+         bool isPrevCloseReacting = (prevClose - keyLevels[i]) < (keyLevels[i + 1] - prevClose);
 
-      // Check if recent swing lows are below THIS key level
-      bool swingLowsBelow = (swingLows[1].price <= keyLevel && swingLows[0].price <= keyLevel);
-
-      // Check if current price is above THIS SAME key level
-      bool priceAbove = (prevClose > keyLevel);
-
-      // If both conditions are true for this key level, return true
-      if(swingLowsBelow && priceAbove) {
-         Print("Found Key level reaction at: ", DoubleToString(keyLevel, _Digits) + " at index: " + DoubleToString(i));
-         return true;
+         // If both conditions are true for this key level, return true
+         if(isSwingOneReacting || isSwingTwoReacting || isPrevCloseReacting) {
+            Print("Found Key level reaction at: ", DoubleToString(keyLevels[i], _Digits) + " at index: " + DoubleToString(i));
+            return true;
+         }
       }
    }
 
