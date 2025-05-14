@@ -193,7 +193,7 @@ void OnTimer() {
    // Draw horisontal lines for previous day high and low
    if(DrawOnChart) {
       DrawKeyLevel(state.prevDayHigh, "PDH", clrDodgerBlue);
-      DrawKeyLevel(state.prevDayLow, "PDL", clrCrimson);
+      DrawKeyLevel(state.prevDayLow, "PDL", clrLightPink);
    }
 
    // Process trading logic
@@ -503,7 +503,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
                if(distancePercent <= MaxSMADistancePercent) {
                   return LONG;
                } else {
-                  Print("Price is outside max distance from SMA");
+                  Print("Price is beyond MaxSMADistancePercent" + DoubleToString(distancePercent));
                }
             }
          }
@@ -522,7 +522,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
                if(distancePercent <= MaxSMADistancePercent) {
                   return SHORT;
                } else {
-                  Print("Price is outside max distance from SMA");
+                  Print("Price is beyond MaxSMADistancePercent" + DoubleToString(distancePercent));
                }
             }
          }
