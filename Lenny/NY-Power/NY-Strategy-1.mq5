@@ -452,10 +452,8 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
       double keyLevel = keyLevels[i];
 
       if(MathMax(swingHighs[0].price, swingHighs[1].price) >= keyLevel && keyLevel > prevClose) {
-         if(CheckIsAboveSMA(iOpen(_Symbol, PERIOD_CURRENT, 3), SMA_Period) && !CheckIsAboveSMA(prevClose, SMA_Period)) {
-            Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
-            return true;
-         }
+         Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
+         return true;
       }
    }
 
@@ -474,10 +472,8 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
       double keyLevel = keyLevels[i];
 
       if(MathMin(swingLows[0].price, swingLows[1].price) <= keyLevel && prevClose > keyLevel) {
-         if(!CheckIsAboveSMA(iOpen(_Symbol, PERIOD_CURRENT, 3), SMA_Period) && CheckIsAboveSMA(prevClose, SMA_Period)) {
-            Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
-            return true;
-         }
+         Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
+         return true;
       }
    }
 
