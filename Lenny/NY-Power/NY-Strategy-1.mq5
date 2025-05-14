@@ -79,6 +79,7 @@ input int        MinFVGSearchRange = 10;      // Minimum bars to search for FVGs
 input int        FVGLookBackBars = 2;         // FVG lookback bars
 input int        SMA_Period = 20;             // SMA period for trend confirmation
 input double     BufferPips = 1.0;            // Buffer in pips for stop loss
+input double MaxSMADistancePercent = 0.2;     // Maximum distance from SMA as %
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
@@ -487,6 +488,8 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 TRADE_DIRECTION CheckForEntrySignals() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
+   double smaValue = GetSMAValue();
+   double distancePercent = MathAbs(prevClose - smaValue) / smaValue * 100;
 
    // LONG signal
    if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0) {
@@ -497,7 +500,11 @@ TRADE_DIRECTION CheckForEntrySignals() {
             Print("Found at least 1 bullish FVGs after swing low below SMA");
             if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
                Print("Found swing lows rejecting key level");
-               return LONG;
+               if(distancePercent <= MaxSMADistancePercent) {
+                  return LONG;
+               } else {
+                  Print("Price is outside max distance from SMA");
+               }
             }
          }
       }
@@ -512,7 +519,11 @@ TRADE_DIRECTION CheckForEntrySignals() {
             Print("Found at least 1 bearish FVGs after swing high above SMA");
             if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
                Print("Found swing highs rejecting key level");
-               return SHORT;
+               if(distancePercent <= MaxSMADistancePercent) {
+                  return SHORT;
+               } else {
+                  Print("Price is outside max distance from SMA");
+               }
             }
          }
       }
