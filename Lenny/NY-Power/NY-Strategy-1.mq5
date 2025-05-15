@@ -454,7 +454,13 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
 
       if(MathMax(swingHighs[0].price, swingHighs[1].price) >= keyLevel && keyLevel > prevClose) {
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
-         return true;
+         if(i - 1 >= 0) {
+            Print("Next key level: ", DoubleToString(keyLevels[i - 1], _Digits));
+            return true;
+         } else {
+            Print("No next key level found");
+            return false;
+         }
       }
    }
 
@@ -474,7 +480,13 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 
       if(MathMin(swingLows[0].price, swingLows[1].price) <= keyLevel && prevClose > keyLevel) {
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
-         return true;
+         if(i + 1 < ArraySize(keyLevels)) {
+            Print("Next key level: ", DoubleToString(keyLevels[i + 1], _Digits));
+            return true;
+         } else {
+            Print("No next key level found");
+            return false;
+         }
       }
    }
 
@@ -508,7 +520,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bullish FVGs after swing lows");
          if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
             Print("Found swing lows rejecting key level");
-            if(prevLow > state.bullishFVGs[0].low && prevLow <= state.bullishFVGs[0].high && prevClose >= state.bullishFVGs[0].high) {
+            if(prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose >= state.bullishFVGs[0].high) {
                Print("Price is inside bullish FVGs");
                return LONG;
             }
@@ -523,7 +535,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bearish FVGs after swing highs");
          if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
             Print("Found swing highs rejecting key level");
-            if(prevHigh < state.bearishFVGs[0].low && prevHigh >= state.bearishFVGs[0].high && prevClose <= state.bearishFVGs[0].high) {
+            if(prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose <= state.bearishFVGs[0].high) {
                Print("Price is inside bearish FVGs");
                return SHORT;
             }
