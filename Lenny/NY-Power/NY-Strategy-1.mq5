@@ -83,7 +83,7 @@ double           MinGapSize = 5.0;            // Minimum gap size in pips for FV
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
-input double     MinRRR = 3.0;                // Minimum risk to reward ratio
+input double     MinRRR = 2.5;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
 
@@ -181,10 +181,8 @@ void OnTimer() {
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
-   state.keyLevels[3] = state.asianRanges[0].middle;
    state.keyLevels[3] = state.asianRanges[0].low;
    state.keyLevels[4] = state.londonRanges[0].high;
-   state.keyLevels[4] = state.londonRanges[0].middle;
    state.keyLevels[5] = state.londonRanges[0].low;
 
    // sort the key levels
@@ -559,7 +557,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
    }
 
    double entryPrice, stopLoss, takeProfit, lotSize;
-   double highestSwingLow, lowestFVGLow, lowestSwingHigh, highestFVGHigh;
+   double highestSwingLow, lowestFVGCandleLow, lowestSwingHigh, highestFVGCandleHigh;
 
    switch(signal) {
       case LONG:
@@ -569,7 +567,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
          highestSwingLow = MathMax(state.swingLows[0].price, state.swingLows[1].price);
          lowestFVGLow = MathMin(iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar), iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar + 1));
-         stopLoss = lowestFVGLow - (BufferPips * GetPipValue());
+         stopLoss = lowestFVGCandleLow - (BufferPips * GetPipValue());
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
@@ -591,7 +589,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
          lowestSwingHigh = MathMin(state.swingHighs[0].price, state.swingHighs[1].price);
-         highestFVGHigh = MathMax(iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar), iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar + 1));
+         highestFVGCandleHigh = MathMax(iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar), iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar + 1));
          stopLoss = highestFVGHigh + (BufferPips * GetPipValue());
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
