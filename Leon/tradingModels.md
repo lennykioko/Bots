@@ -1,5 +1,44 @@
 # ICT Trading Strategies
 
+
+Using this guide create a simple straifght forward EA that is simple to read with small functions for each check.
+Rules:
+
+1: trade time - 1700 to 19:00
+2. store the range of 16:30 to 17:00 - we need the middle
+3. start hunting from 17:00 - get swing highs and lows past 17:00 on one minute timeframe
+4. Get the first presented fair value gap fvg past 17:31
+
+Buy :
+if price is above middle of 16:30 to 17:00  range
+price above Moving Average 20 of five minutes
+Previous swing low that is past 17:00 has been taken
+Price is above the high of the first presented fair value gap
+if all this conditions are met: wait for a bearish candle anf enter on the close of it
+sl in most recent swing high and rrr for tp is 3
+
+
+Sell :
+if price is below middle of 16:30 to 17:00  range
+price below Moving Average 20 of five minutes
+Previous swing high that is past 17:00 has been taken
+Price is balow the low of the first presented fair value gap
+if all this conditions are met: wait for a bullish candle and enter on the close of it
+sl in most recent swing low and rrr for tp is 3
+
+make the functions as granular as possible. with so minimal print statements.
+make use of addTextOnScreen.
+- write as a mql5 expert with simplicity of logic
+
+
+
+
+
+
+
+
+
+
 ## Strategy 1: London Open Range Breakout with FVG Confirmation
 
 This strategy targets the volatility of the London session open by identifying a range and trading the breakout with FVG confirmation.
