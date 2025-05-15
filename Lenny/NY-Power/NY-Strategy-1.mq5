@@ -79,7 +79,6 @@ input int        MinFVGSearchRange = 10;      // Minimum bars to search for FVGs
 input int        FVGLookBackBars = 2;         // FVG lookback bars
 input int        SMA_Period = 20;             // SMA period for trend confirmation
 input double     BufferPips = 1.0;            // Buffer in pips for stop loss
-input double MaxSMADistancePercent = 0.2;     // Maximum distance from SMA as %
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
@@ -452,7 +451,7 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
    for(int i = 0; i < ArraySize(keyLevels); i++) {
       double keyLevel = keyLevels[i];
 
-      if(MathMax(MathMax(swingHighs[0].price, swingHighs[1].price), swingHighs[2].price) >= keyLevel && keyLevel > prevClose) {
+      if(MathMax(swingHighs[0].price, swingHighs[1].price) >= keyLevel && keyLevel > prevClose) {
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          return true;
       }
@@ -472,7 +471,7 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
    for(int i = 0; i < ArraySize(keyLevels); i++) {
       double keyLevel = keyLevels[i];
 
-      if(MathMin(MathMin(swingLows[0].price, swingLows[1].price), swingLows[2].price) <= keyLevel && prevClose > keyLevel) {
+      if(MathMin(swingLows[0].price, swingLows[1].price) <= keyLevel && prevClose > keyLevel) {
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          return true;
       }
@@ -487,46 +486,35 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
 //+------------------------------------------------------------------+
 TRADE_DIRECTION CheckForEntrySignals() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double prevHigh = iHigh(_Symbol, PERIOD_CURRENT, 1);
+   double prevLow = iLow(_Symbol, PERIOD_CURRENT, 1);
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
-   bool above200SMA = CheckIsAboveSMA(prevClose, 200);
-   double smaValue0 = GetSMAValue(0);
-   double smaValue1 = GetSMAValue(1);
-   double smaValue2 = GetSMAValue(2);
-   double distancePercent = MathAbs(prevClose - smaValue) / smaValue * 100;
 
    // LONG signal
-   if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0 && above200SMA) {
-      if(!CheckIsAboveSMA(state.swingLows[1].price, SMA_Period) || !CheckIsAboveSMA(state.swingLows[0].price, SMA_Period)) {
-         Print("Found swing lows below SMA");
-         GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
-         if(ArraySize(state.bullishFVGs) >= 1) {
-            Print("Found at least 1 bullish FVGs after swing low below SMA");
-            if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
-               Print("Found swing lows rejecting key level");
-               if(distancePercent <= MaxSMADistancePercent) { // not far away from SMA
-                  return LONG;
-               } else {
-                  Print("Price is beyond MaxSMADistancePercent" + DoubleToString(distancePercent));
-               }
+   if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0) {
+      GetBullishFVGs(FVGLookBackBars, state.swingLows[1].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
+      if(ArraySize(state.bullishFVGs) >= 1) {
+         Print("Found at least 1 bullish FVGs after swing lows");
+         if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
+            Print("Found swing lows rejecting key level");
+            if(prevLow >= state.bullishFVGs[0].low && prevLow <= state.bullishFVGs[0].high && prevClose >= state.bullishFVGs[0].high) {
+               Print("Price is inside bullish FVGs");
+               return LONG;
             }
          }
       }
    }
 
    // SHORT signal
-   if(ArraySize(state.swingHighs) > 0 && !aboveSMA &&  ArraySize(state.bearishFVGs) > 0 && !above200SMA) {
-      if(CheckIsAboveSMA(state.swingHighs[1].price, SMA_Period) || CheckIsAboveSMA(state.swingHighs[0].price, SMA_Period)) {
-         Print("Found swing highs above SMA");
-         GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
-         if(ArraySize(state.bearishFVGs) >= 1) {
-            Print("Found at least 1 bearish FVGs after swing high above SMA");
-            if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
-               Print("Found swing highs rejecting key level");
-               if(distancePercent <= MaxSMADistancePercent) { // not far away from SMA
-                  return SHORT;
-               } else {
-                  Print("Price is beyond MaxSMADistancePercent" + DoubleToString(distancePercent));
-               }
+   if(ArraySize(state.swingHighs) > 0 && !aboveSMA && ArraySize(state.bearishFVGs) > 0) {
+      GetBearishFVGs(FVGLookBackBars, state.swingHighs[1].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
+      if(ArraySize(state.bearishFVGs) >= 1) {
+         Print("Found at least 1 bearish FVGs after swing highs");
+         if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
+            Print("Found swing highs rejecting key level");
+            if(prevHigh <= state.bearishFVGs[0].low && prevHigh >= state.bearishFVGs[0].high && prevClose <= state.bearishFVGs[0].high) {
+               Print("Price is inside bearish FVGs");
+               return SHORT;
             }
          }
       }
