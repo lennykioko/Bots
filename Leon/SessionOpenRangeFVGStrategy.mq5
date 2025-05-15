@@ -41,6 +41,11 @@ public:
    SwingPoint      swingHighs[];     // Swing highs past 17:00
    SwingPoint      swingLows[];      // Swing lows past 17:00
 
+   // Swing point tracking for position management
+   SwingPoint      swingHighsSinceEntry[]; // Swing highs since position entry
+   SwingPoint      swingLowsSinceEntry[];  // Swing lows since position entry
+   datetime        entryTime;              // Time of position entry
+
    // Strategy state
    TRADE_STATE     currentState;     // Current trading state
    bool            fvgFound;         // Whether the FVG has been found
@@ -67,6 +72,7 @@ public:
       dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       isFirstFVGBullish = true; // Default
       dayOfYear = 0;
+      entryTime = 0;
    }
 };
 
@@ -115,6 +121,7 @@ input double BE_RRR_Level = 1.5;           // Move to Breakeven at R multiple
 input double PARTIAL_PROFIT_PERCENT = 0.4; // Take partial profit percentage at BE level
 input double PARTIAL_LOSS_RRR = 0.8;       // Take partial loss at R multiple
 input double PARTIAL_LOSS_PERCENT = 0.5;   // Partial loss percentage
+input int    MAX_SWING_POINTS = 3;         // Close trade after this many swing points taken
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -126,14 +133,8 @@ int OnInit() {
    // Calculate maximum loss amount
    State.maxLossAmount = -(RiskPerTrade * MaxLossPerDay);
 
-   // Set up timer for main processing - adjust for optimization in backtesting
-   if (IsTesting() && !IsVisualMode()) {
-      // Use longer timer interval for non-visual backtesting (5 seconds instead of 1)
-      EventSetTimer(5);
-   } else {
-      // Standard 1-second timer for visual mode and live trading
-      EventSetTimer(1);
-   }
+   // Standard 1-second timer for all modes
+   EventSetTimer(1);
 
    // Set up session times
    SetupSessionTimes();
@@ -173,37 +174,12 @@ void OnDeinit(const int reason) {
 //| Timer event function                                             |
 //+------------------------------------------------------------------+
 void OnTimer() {
-   // Always check for day reset first
+   // Check for day reset first (this still needs to happen regardless of trading hours)
    CheckDayReset();
 
    // Quick check if within trading hours - exit immediately if not
    if (!IsWithinTradingHours()) {
-      // Only update display if visible on chart (optimization for backtesting)
-      if (IsTesting() && !IsVisualMode()) {
-         // In non-visual backtesting, skip any display updates for speed
-         return;
-      }
-
-      // Update display only in visual mode or live trading
-      clearTextDisplay();
-      addTextOnScreen("Outside trading hours", clrRed);
-      addTextOnScreen("Current time: " + TimeToString(TimeCurrent()), clrWhite);
-      addTextOnScreen("Session start: " + TimeToString(State.sessionStartTime), clrWhite);
-      addTextOnScreen("Session end: " + TimeToString(State.sessionEndTime), clrWhite);
-
-      // Additional debug information about trade state
-      string stateStr = "";
-      switch (State.currentState) {
-         case STATE_NO_TRADE:  stateStr = "No Trade Signal"; break;
-         case STATE_WAIT_BUY:  stateStr = "Waiting for Bearish Candle to BUY"; break;
-         case STATE_WAIT_SELL: stateStr = "Waiting for Bullish Candle to SELL"; break;
-         case STATE_IN_TRADE:  stateStr = "In Trade"; break;
-         case STATE_MAX_TRADES: stateStr = "Maximum Trades Reached"; break;
-         case STATE_MAX_LOSS:  stateStr = "Maximum Loss Reached"; break;
-      }
-      addTextOnScreen("Current state: " + stateStr, clrYellow);
-      addTextOnScreen("Trades opened today: " + IntegerToString(State.tradesOpenedToday), clrYellow);
-      addTextOnScreen("Day of Year: " + IntegerToString(State.dayOfYear), clrYellow);
+      // Do absolutely nothing if not in trading hours
       return;
    }
 
@@ -740,6 +716,15 @@ void ExecuteBuyTrade() {
 
    // Execute the order using the global trade object from OrderManagement.mqh
    trade.PositionOpen(_Symbol, ORDER_TYPE_BUY, lotSize, entryPrice, stopLoss, takeProfit, "OR FVG Strategy");
+
+   // Record entry time for swing point tracking
+   State.entryTime = TimeCurrent();
+
+   // Clear swing point arrays for this new position
+   ArrayFree(State.swingHighsSinceEntry);
+   ArrayFree(State.swingLowsSinceEntry);
+
+   Print("Buy trade executed. Entry time recorded: ", TimeToString(State.entryTime));
 }
 
 //+------------------------------------------------------------------+
@@ -764,6 +749,15 @@ void ExecuteSellTrade() {
 
    // Execute the order using the global trade object from OrderManagement.mqh
    trade.PositionOpen(_Symbol, ORDER_TYPE_SELL, lotSize, entryPrice, stopLoss, takeProfit, "OR FVG Strategy");
+
+   // Record entry time for swing point tracking
+   State.entryTime = TimeCurrent();
+
+   // Clear swing point arrays for this new position
+   ArrayFree(State.swingHighsSinceEntry);
+   ArrayFree(State.swingLowsSinceEntry);
+
+   Print("Sell trade executed. Entry time recorded: ", TimeToString(State.entryTime));
 }
 
 //+------------------------------------------------------------------+
@@ -804,11 +798,6 @@ double GetMostRecentSwingLow() {
 //| Display current status on chart                                  |
 //+------------------------------------------------------------------+
 void DisplayStatus() {
-   // Skip display updates in non-visual backtesting for speed
-   if (IsTesting() && !IsVisualMode()) {
-      return;
-   }
-
    // Display opening range info
    string orStatus = "Opening Range: ";
    if (State.openingRange.valid) {
@@ -972,6 +961,70 @@ void DisplayStatus() {
    addTextOnScreen("  Below MA20: " + (belowMA ? "Yes" : "No"), belowMA ? clrGreen : clrRed);
    addTextOnScreen("  SwingLow Taken: " + (swingLowTaken ? "Yes" : "No"), swingLowTaken ? clrGreen : clrRed);
    addTextOnScreen("  Below FVG Low: " + (belowFVGLow ? "Yes" : "No"), belowFVGLow ? clrGreen : clrRed);
+
+   // Add swing point tracking information
+   if (HasActivePositionsOrOrders() && State.entryTime > 0) {
+      // Get position type
+      ENUM_POSITION_TYPE posType = POSITION_TYPE_BUY; // Default
+
+      for (int i = 0; i < PositionsTotal(); i++) {
+         ulong ticket = PositionGetTicket(i);
+         if (ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
+            posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+            break;
+         }
+      }
+
+      // Count taken and untaken swing points
+      int takenSwingPoints = 0;
+      int untakenSwingPoints = 0;
+
+      if (posType == POSITION_TYPE_BUY) {
+         // For buy positions, count taken swing lows
+         for (int j = 0; j < ArraySize(State.swingLowsSinceEntry); j++) {
+            if (State.swingLowsSinceEntry[j].taken) {
+               takenSwingPoints++;
+            }
+         }
+
+         // For buy positions, count untaken swing highs
+         for (int j = 0; j < ArraySize(State.swingHighsSinceEntry); j++) {
+            if (!State.swingHighsSinceEntry[j].taken) {
+               untakenSwingPoints++;
+            }
+         }
+
+         addTextOnScreen("Swing Lows Taken: " + IntegerToString(takenSwingPoints) +
+                        "/" + IntegerToString(MAX_SWING_POINTS),
+                        takenSwingPoints >= MAX_SWING_POINTS ? clrRed : clrYellow);
+
+         addTextOnScreen("Swing Highs Not Taken: " + IntegerToString(untakenSwingPoints) +
+                        "/" + IntegerToString(MAX_SWING_POINTS),
+                        untakenSwingPoints >= MAX_SWING_POINTS ? clrRed : clrYellow);
+      } else {
+         // For sell positions, count taken swing highs
+         for (int j = 0; j < ArraySize(State.swingHighsSinceEntry); j++) {
+            if (State.swingHighsSinceEntry[j].taken) {
+               takenSwingPoints++;
+            }
+         }
+
+         // For sell positions, count untaken swing lows
+         for (int j = 0; j < ArraySize(State.swingLowsSinceEntry); j++) {
+            if (!State.swingLowsSinceEntry[j].taken) {
+               untakenSwingPoints++;
+            }
+         }
+
+         addTextOnScreen("Swing Highs Taken: " + IntegerToString(takenSwingPoints) +
+                        "/" + IntegerToString(MAX_SWING_POINTS),
+                        takenSwingPoints >= MAX_SWING_POINTS ? clrRed : clrYellow);
+
+         addTextOnScreen("Swing Lows Not Taken: " + IntegerToString(untakenSwingPoints) +
+                        "/" + IntegerToString(MAX_SWING_POINTS),
+                        untakenSwingPoints >= MAX_SWING_POINTS ? clrRed : clrYellow);
+      }
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -991,11 +1044,202 @@ void ManageExistingTrades() {
    if (currentCandleTime > lastCandleTime) {
       lastCandleTime = currentCandleTime;
 
+      // Update swing points since position entry
+      UpdateSwingPointsSinceEntry();
+
       // Check for breakeven and partial profit targets
       CheckBreakevenAndPartialProfit();
 
       // Check for partial loss targets
       CheckPartialLoss();
+
+      // Check for swing point exit conditions
+      CheckSwingPointExits();
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Check if trades should be closed based on swing point count      |
+//+------------------------------------------------------------------+
+void CheckSwingPointExits() {
+   // Iterate through positions
+   for (int i = 0; i < PositionsTotal(); i++) {
+      ulong ticket = PositionGetTicket(i);
+
+      // Skip positions for other symbols
+      if (ticket == 0 || PositionGetString(POSITION_SYMBOL) != _Symbol) {
+         continue;
+      }
+
+      // Get position type
+      ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+      // --- Scenario 1: Count taken swing points ---
+      int swingPointsTaken = 0;
+
+      // For buy positions, count taken swing lows
+      if (posType == POSITION_TYPE_BUY) {
+         for (int j = 0; j < ArraySize(State.swingLowsSinceEntry); j++) {
+            if (State.swingLowsSinceEntry[j].taken) {
+               swingPointsTaken++;
+            }
+         }
+
+         // Close trade if MAX_SWING_POINTS swing lows have been taken
+         if (swingPointsTaken >= MAX_SWING_POINTS) {
+            if (ClosePositionWithReason(ticket, "BUY", MAX_SWING_POINTS, "swing lows taken")) {
+               continue; // Skip to next position after closure
+            }
+         }
+      }
+      // For sell positions, count taken swing highs
+      else {
+         for (int j = 0; j < ArraySize(State.swingHighsSinceEntry); j++) {
+            if (State.swingHighsSinceEntry[j].taken) {
+               swingPointsTaken++;
+            }
+         }
+
+         // Close trade if MAX_SWING_POINTS swing highs have been taken
+         if (swingPointsTaken >= MAX_SWING_POINTS) {
+            if (ClosePositionWithReason(ticket, "SELL", MAX_SWING_POINTS, "swing highs taken")) {
+               continue; // Skip to next position after closure
+            }
+         }
+      }
+
+      // --- Scenario 2: Count formed but not taken swing points ---
+      int swingPointsFormedNotTaken = 0;
+
+      // For buy positions, count swing highs that formed but were NOT taken
+      if (posType == POSITION_TYPE_BUY) {
+         for (int j = 0; j < ArraySize(State.swingHighsSinceEntry); j++) {
+            if (!State.swingHighsSinceEntry[j].taken) {
+               swingPointsFormedNotTaken++;
+            }
+         }
+
+         // Close trade if MAX_SWING_POINTS swing highs formed but not taken
+         if (swingPointsFormedNotTaken >= MAX_SWING_POINTS) {
+            if (ClosePositionWithReason(ticket, "BUY", MAX_SWING_POINTS, "swing highs formed but not taken")) {
+               continue; // Skip to next position after closure
+            }
+         }
+      }
+      // For sell positions, count swing lows that formed but were NOT taken
+      else {
+         for (int j = 0; j < ArraySize(State.swingLowsSinceEntry); j++) {
+            if (!State.swingLowsSinceEntry[j].taken) {
+               swingPointsFormedNotTaken++;
+            }
+         }
+
+         // Close trade if MAX_SWING_POINTS swing lows formed but not taken
+         if (swingPointsFormedNotTaken >= MAX_SWING_POINTS) {
+            if (ClosePositionWithReason(ticket, "SELL", MAX_SWING_POINTS, "swing lows formed but not taken")) {
+               continue; // Skip to next position after closure
+            }
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Close position with a detailed reason message                    |
+//+------------------------------------------------------------------+
+bool ClosePositionWithReason(ulong ticket, string direction, int count, string reason) {
+   if (trade.PositionClose(ticket)) {
+      Print("Closed ", direction, " position #", ticket, " due to ", count, " ", reason);
+
+      // Reset entry time and swing point arrays
+      State.entryTime = 0;
+      ArrayFree(State.swingHighsSinceEntry);
+      ArrayFree(State.swingLowsSinceEntry);
+      return true;
+   } else {
+      Print("Failed to close position. Error: ", GetLastError());
+      return false;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Update swing points since position entry                         |
+//+------------------------------------------------------------------+
+void UpdateSwingPointsSinceEntry() {
+   // Only track swing points if we have an active position
+   if (!HasActivePositionsOrOrders() || State.entryTime == 0) {
+      return;
+   }
+
+   // Get the position type (buy or sell)
+   ENUM_POSITION_TYPE posType = POSITION_TYPE_BUY; // Default
+   bool positionFound = false; // Add this variable declaration
+
+   for (int i = 0; i < PositionsTotal(); i++) {
+      ulong ticket = PositionGetTicket(i);
+      if (ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
+         posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+         positionFound = true; // Set to true when position is found
+         break;
+      }
+   }
+
+   if (!positionFound) {
+      return; // No position found
+   }
+
+   // Find bar index of entry time
+   int entryBarIndex = 0;
+   for (int i = 0; i < 500; i++) {
+      datetime barTime = iTime(_Symbol, PERIOD_M1, i);
+      if (barTime <= State.entryTime) {
+         entryBarIndex = i;
+         break;
+      }
+   }
+
+   // Get swing points since entry - for both position types, track both highs and lows
+   // We need both to implement the complete exit criteria
+   GetSwingLows(MAX_SWING_POINTS * 2, State.swingLowsSinceEntry, PERIOD_M1, entryBarIndex, false, SwingLowColor);
+   GetSwingHighs(MAX_SWING_POINTS * 2, State.swingHighsSinceEntry, PERIOD_M1, entryBarIndex, false, SwingHighColor);
+
+   // Debug info
+   if (posType == POSITION_TYPE_BUY) {
+      int takenLowsCount = 0;
+      int untakenHighsCount = 0;
+
+      for (int i = 0; i < ArraySize(State.swingLowsSinceEntry); i++) {
+         if (State.swingLowsSinceEntry[i].taken) {
+            takenLowsCount++;
+         }
+      }
+
+      for (int i = 0; i < ArraySize(State.swingHighsSinceEntry); i++) {
+         if (!State.swingHighsSinceEntry[i].taken) {
+            untakenHighsCount++;
+         }
+      }
+
+      Print("LONG position: ", takenLowsCount, " swing lows taken, ",
+            untakenHighsCount, " swing highs formed but not taken.");
+   } else {
+      int takenHighsCount = 0;
+      int untakenLowsCount = 0;
+
+      for (int i = 0; i < ArraySize(State.swingHighsSinceEntry); i++) {
+         if (State.swingHighsSinceEntry[i].taken) {
+            takenHighsCount++;
+         }
+      }
+
+      for (int i = 0; i < ArraySize(State.swingLowsSinceEntry); i++) {
+         if (!State.swingLowsSinceEntry[i].taken) {
+            untakenLowsCount++;
+         }
+      }
+
+      Print("SHORT position: ", takenHighsCount, " swing highs taken, ",
+            untakenLowsCount, " swing lows formed but not taken.");
    }
 }
 
