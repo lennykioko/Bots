@@ -183,7 +183,16 @@ void OnTimer() {
       return;
    }
 
-   // Continue with regular processing - we're in trading hours
+   // Exit early if we're at our daily limits
+   if (State.currentState == STATE_MAX_TRADES || State.currentState == STATE_MAX_LOSS) {
+      // Only update display if needed - for visual feedback
+      clearTextDisplay();
+      UpdateDailyPerformance();
+      DisplayStatus();
+      return;
+   }
+
+   // Continue with regular processing - we're in trading hours and below limits
 
    // Clear display
    clearTextDisplay();
@@ -251,6 +260,15 @@ void UpdateMarketStructure() {
    // Update opening range (if not already updated)
    if (!State.openingRange.valid) {
       UpdateOpeningRange();
+   }
+
+   // If we have an active position, we need swing points for management
+   bool needSwingPoints = HasActivePositionsOrOrders();
+
+   // If we're at daily limits and already have FVGs, we can skip most updates
+   if ((State.currentState == STATE_MAX_TRADES || State.currentState == STATE_MAX_LOSS) &&
+       State.fvgFound && State.openingRange.valid && !needSwingPoints) {
+      return;
    }
 
    // Update swing points since trading session start
@@ -537,7 +555,7 @@ bool CanOpenMoreTrades() {
 //| Process trading logic based on strategy rules                     |
 //+------------------------------------------------------------------+
 void ProcessTradingLogic() {
-   // If already in a trade, manage it
+   // If already in a trade, return immediately
    if (HasActivePositionsOrOrders()) {
       State.currentState = STATE_IN_TRADE;
       return;
@@ -548,7 +566,7 @@ void ProcessTradingLogic() {
       State.currentState = STATE_NO_TRADE;
    }
 
-   // Check if we've reached our trading limits
+   // Check if we've reached our trading limits - return immediately if so
    if(!CanOpenMoreTrades()) {
       return; // State is already set by CanOpenMoreTrades
    }
