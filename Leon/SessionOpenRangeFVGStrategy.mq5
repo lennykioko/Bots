@@ -89,6 +89,11 @@ input int    MaxTradesPerDay = 3;                      // Maximum Trades Per Day
 input int    MaxTradesPerHour = 2;                     // Maximum Trades Per Hour
 input double MaxLossPerDay = 3.0;                      // Max Loss Per Day (multiple of Risk)
 
+// FVG settings
+input string FVGSettings = "===== FVG Settings ====="; // FVG Settings
+input bool   IncludeFirstCandleFVG = false;            // Include FVGs on first candle of range
+input int    MinFVGSearchBars = 200;                   // Minimum bars to search for FVGs
+
 // Indicators
 input string IndicatorSettings = "===== Indicator Settings ====="; // Indicator Settings
 input int MADuration = 20;                            // Moving Average Period (5 min timeframe)
@@ -121,8 +126,14 @@ int OnInit() {
    // Calculate maximum loss amount
    State.maxLossAmount = -(RiskPerTrade * MaxLossPerDay);
 
-   // Set up timer for main processing
-   EventSetTimer(1);
+   // Set up timer for main processing - adjust for optimization in backtesting
+   if (IsTesting() && !IsVisualMode()) {
+      // Use longer timer interval for non-visual backtesting (5 seconds instead of 1)
+      EventSetTimer(5);
+   } else {
+      // Standard 1-second timer for visual mode and live trading
+      EventSetTimer(1);
+   }
 
    // Set up session times
    SetupSessionTimes();
@@ -165,8 +176,15 @@ void OnTimer() {
    // Always check for day reset first
    CheckDayReset();
 
-   // If outside trading hours, exit
+   // Quick check if within trading hours - exit immediately if not
    if (!IsWithinTradingHours()) {
+      // Only update display if visible on chart (optimization for backtesting)
+      if (IsTesting() && !IsVisualMode()) {
+         // In non-visual backtesting, skip any display updates for speed
+         return;
+      }
+
+      // Update display only in visual mode or live trading
       clearTextDisplay();
       addTextOnScreen("Outside trading hours", clrRed);
       addTextOnScreen("Current time: " + TimeToString(TimeCurrent()), clrWhite);
@@ -188,6 +206,8 @@ void OnTimer() {
       addTextOnScreen("Day of Year: " + IntegerToString(State.dayOfYear), clrYellow);
       return;
    }
+
+   // Continue with regular processing - we're in trading hours
 
    // Clear display
    clearTextDisplay();
@@ -252,14 +272,18 @@ bool IsWithinTradingHours() {
 //| Update market structure: OR, FVGs, and Swing points               |
 //+------------------------------------------------------------------+
 void UpdateMarketStructure() {
-   // Update opening range
-   UpdateOpeningRange();
+   // Update opening range (if not already updated)
+   if (!State.openingRange.valid) {
+      UpdateOpeningRange();
+   }
 
    // Update swing points since trading session start
    UpdateSwingPoints();
 
-   // Update FVGs
-   UpdateFVGs();
+   // Update FVGs (if not already found)
+   if (!State.fvgFound) {
+      UpdateFVGs();
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -329,6 +353,14 @@ void UpdateFVGs() {
    int seconds = (orStartHour * 3600) + (orStartMin * 60);
    datetime fvgSearchTime = today + seconds;
 
+   // If we don't want to include FVGs on the first candle, move the search time forward by 1 minute
+   if (!IncludeFirstCandleFVG) {
+      fvgSearchTime += 60; // Add 1 minute
+      addTextOnScreen("Excluding first candle FVGs, start time: " + TimeToString(fvgSearchTime), clrYellow);
+   } else {
+      addTextOnScreen("Including first candle FVGs, start time: " + TimeToString(fvgSearchTime), clrYellow);
+   }
+
    // Find bar index of FVG search time
    int barsSinceStart = 0;
    for (int i = 0; i < 500; i++) {
@@ -343,8 +375,8 @@ void UpdateFVGs() {
    FVG bullishFVGs[];
    FVG bearishFVGs[];
 
-   GetBullishFVGs(0, barsSinceStart, bullishFVGs, 100, ShowFVGs, BullFVGColor, PERIOD_M1);
-   GetBearishFVGs(0, barsSinceStart, bearishFVGs, 100, ShowFVGs, BearFVGColor, PERIOD_M1);
+   GetBullishFVGs(0, barsSinceStart, bullishFVGs, MinFVGSearchBars, ShowFVGs, BullFVGColor, PERIOD_M1);
+   GetBearishFVGs(0, barsSinceStart, bearishFVGs, MinFVGSearchBars, ShowFVGs, BearFVGColor, PERIOD_M1);
 
    // Debug information
    int bullSize = ArraySize(bullishFVGs);
@@ -359,7 +391,7 @@ void UpdateFVGs() {
    State.firstFVG.exists = false;
 
    // Format the time string for display
-   string searchTimeStr = OpenRangeStartTime;
+   string searchTimeStr = IncludeFirstCandleFVG ? OpenRangeStartTime : TimeToString(fvgSearchTime, TIME_MINUTES);
 
    // Debug the first few FVGs
    for (int i = 0; i < bullSize && i < 3; i++) {
@@ -772,6 +804,11 @@ double GetMostRecentSwingLow() {
 //| Display current status on chart                                  |
 //+------------------------------------------------------------------+
 void DisplayStatus() {
+   // Skip display updates in non-visual backtesting for speed
+   if (IsTesting() && !IsVisualMode()) {
+      return;
+   }
+
    // Display opening range info
    string orStatus = "Opening Range: ";
    if (State.openingRange.valid) {
