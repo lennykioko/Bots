@@ -418,7 +418,12 @@ bool IsNYHour() {
    MqlDateTime dt;
    TimeToStruct(now, dt);
 
-   return (dt.hour >= startTradingHour && dt.hour < endTradingHour);
+   if(dt.hour >= startTradingHour && dt.hour <= endTradingHour) {
+      if((dt.minute >= 45) || (dt.minute <= 15)) {
+         return true;
+      }
+   }
+   return false;
 }
 
 //+------------------------------------------------------------------+
