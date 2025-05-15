@@ -104,7 +104,7 @@ input color  OpenRangeColor = clrGoldenrod;           // Opening Range color
 
 // Additional input parameters for trade management
 input string TradeManagementSettings = "===== Trade Management Settings ====="; // Trade Management
-input double BE_RRR_Level = 2.0;           // Move to Breakeven at R multiple
+input double BE_RRR_Level = 1.5;           // Move to Breakeven at R multiple
 input double PARTIAL_PROFIT_PERCENT = 0.4; // Take partial profit percentage at BE level
 input double PARTIAL_LOSS_RRR = 0.8;       // Take partial loss at R multiple
 input double PARTIAL_LOSS_PERCENT = 0.5;   // Partial loss percentage
