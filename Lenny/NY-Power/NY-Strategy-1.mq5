@@ -181,8 +181,10 @@ void OnTimer() {
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
+   state.keyLevels[3] = state.asianRanges[0].middle;
    state.keyLevels[3] = state.asianRanges[0].low;
    state.keyLevels[4] = state.londonRanges[0].high;
+   state.keyLevels[4] = state.londonRanges[0].middle;
    state.keyLevels[5] = state.londonRanges[0].low;
 
    // sort the key levels
