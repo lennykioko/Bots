@@ -419,7 +419,7 @@ bool IsNYHour() {
    TimeToStruct(now, dt);
 
    if(dt.hour >= startTradingHour && dt.hour <= endTradingHour) {
-      if((dt.minute >= 45) || (dt.minute <= 15)) {
+      if((dt.min >= 45) || (dt.min <= 15)) {
          return true;
       }
    }
