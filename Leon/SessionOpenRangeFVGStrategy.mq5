@@ -47,6 +47,7 @@ public:
    datetime        sessionStartTime; // Start of trading session (17:00)
    datetime        sessionEndTime;   // End of trading session (19:00)
    datetime        lastCheck;        // Time of last check
+   int             dayOfYear;        // Current day of year for daily resets
 
    // Risk management
    int             tradesOpenedToday; // Number of trades opened today
@@ -65,6 +66,7 @@ public:
       maxLossAmount = 0.0;
       dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       isFirstFVGBullish = true; // Default
+      dayOfYear = 0;
    }
 };
 
@@ -128,10 +130,21 @@ int OnInit() {
    // Initialize text display
    clearTextDisplay();
 
-   // Reset daily counters
-   ResetDailyCounters();
+   // Initialize day of year
+   MqlDateTime dt;
+   datetime now = TimeCurrent();
+   TimeToStruct(now, dt);
+   State.dayOfYear = dt.day_of_year;
 
-   Print("EA initialized. Max loss amount: ", State.maxLossAmount, ", Trades opened today: ", State.tradesOpenedToday);
+   // Reset trading state
+   State.tradesOpenedToday = 0;
+   State.currentState = STATE_NO_TRADE;
+   State.fvgFound = false;
+   State.dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+
+   Print("EA initialized on day ", State.dayOfYear,
+         ". Max loss amount: ", State.maxLossAmount,
+         ", Trades opened today: ", State.tradesOpenedToday);
 
    return(INIT_SUCCEEDED);
 }
@@ -149,8 +162,8 @@ void OnDeinit(const int reason) {
 //| Timer event function                                             |
 //+------------------------------------------------------------------+
 void OnTimer() {
-   // Reset daily counters before processing anything else
-   ResetDailyCounters();
+   // Always check for day reset first
+   CheckDayReset();
 
    // If outside trading hours, exit
    if (!IsWithinTradingHours()) {
@@ -172,6 +185,7 @@ void OnTimer() {
       }
       addTextOnScreen("Current state: " + stateStr, clrYellow);
       addTextOnScreen("Trades opened today: " + IntegerToString(State.tradesOpenedToday), clrYellow);
+      addTextOnScreen("Day of Year: " + IntegerToString(State.dayOfYear), clrYellow);
       return;
    }
 
@@ -300,6 +314,9 @@ void UpdateFVGs() {
    if (State.fvgFound)
       return;
 
+   // Add debug info about FVG search
+   addTextOnScreen("Searching for FVGs...", clrYellow);
+
    // Calculate the timestamp for FVG search start time
    datetime now = TimeCurrent();
    datetime today = now - (now % 86400);  // Today at midnight
@@ -331,8 +348,10 @@ void UpdateFVGs() {
 
    // Debug information
    int bullSize = ArraySize(bullishFVGs);
-   clearTextDisplay();
+   int bearSize = ArraySize(bearishFVGs);
+
    addTextOnScreen("Total Bullish FVGs found: " + IntegerToString(bullSize), clrWhite);
+   addTextOnScreen("Total Bearish FVGs found: " + IntegerToString(bearSize), clrWhite);
 
    // Initialize with empty FVGs
    State.firstBullFVG.exists = false;
@@ -350,9 +369,6 @@ void UpdateFVGs() {
                      " After " + searchTimeStr + ": " + (fvgTime >= fvgSearchTime ? "Yes" : "No"),
                      clrLime);
    }
-
-   int bearSize = ArraySize(bearishFVGs);
-   addTextOnScreen("Total Bearish FVGs found: " + IntegerToString(bearSize), clrWhite);
 
    for (int i = 0; i < bearSize && i < 3; i++) {
       datetime fvgTime = bearishFVGs[i].time;
@@ -416,66 +432,52 @@ void UpdateFVGs() {
    if (State.firstBullFVG.exists || State.firstBearFVG.exists) {
       State.fvgFound = true;
       addTextOnScreen("FVGs found and stored", clrYellow);
+      Print("FVGs found and stored for day ", State.dayOfYear);
    } else {
       addTextOnScreen("No valid FVGs found after " + searchTimeStr, clrYellow);
    }
 }
 
 //+------------------------------------------------------------------+
-//| Reset daily counters at the start of a new trading day           |
+//| Check and handle day reset                                       |
 //+------------------------------------------------------------------+
-void ResetDailyCounters() {
-   // Get current datetime
+void CheckDayReset() {
+   // Get current date/time
+   MqlDateTime dt;
    datetime now = TimeCurrent();
-   MqlDateTime nowStruct;
-   TimeToStruct(now, nowStruct);
+   TimeToStruct(now, dt);
 
-   // Create a static variable to remember the last day we checked
-   static datetime lastDayChecked = 0;
-   static int lastDayOfYear = -1;
+   // Check if it's a new day
+   if (State.dayOfYear == 0 || State.dayOfYear != dt.day_of_year) {
+      // It's a new day - reset everything
+      Print("New day detected! Previous: ", State.dayOfYear, ", Current: ", dt.day_of_year);
 
-   // First run or after EA restart
-   if(lastDayChecked == 0 || lastDayOfYear == -1) {
-      lastDayChecked = now;
-      lastDayOfYear = nowStruct.day_of_year;
-
-      // Initialize daily values on first run
-      State.tradesOpenedToday = 0;
-      State.dayProfit = 0.0;
-      ArrayFree(State.tradeTimeLog);
-      State.dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-
-      // Also reset the trade state to avoid STATE_MAX_TRADES carrying over from previous sessions
-      if (State.currentState == STATE_MAX_TRADES || State.currentState == STATE_MAX_LOSS) {
-         State.currentState = STATE_NO_TRADE;
-      }
-
-      Print("Initial daily counter setup. Day of year: ", lastDayOfYear, ", Starting balance: ", State.dayStartBalance);
-      return;
-   }
-
-   // Check if we're on a new day - compare day of year
-   if(nowStruct.day_of_year != lastDayOfYear) {
-      // Reset daily counters
+      // Reset counters
       State.tradesOpenedToday = 0;
       State.dayProfit = 0.0;
       ArrayFree(State.tradeTimeLog);
 
-      // Store today's starting balance
+      // Update balance
       State.dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
 
-      // Reset the trade state if it was due to daily limits
+      // Reset FVG finding state
+      State.fvgFound = false;
+      State.firstBullFVG.exists = false;
+      State.firstBearFVG.exists = false;
+      State.firstFVG.exists = false;
+
+      // Reset trade state if needed
       if (State.currentState == STATE_MAX_TRADES || State.currentState == STATE_MAX_LOSS) {
          State.currentState = STATE_NO_TRADE;
          Print("Daily limit state reset from: ", (State.currentState == STATE_MAX_TRADES ? "MAX_TRADES" : "MAX_LOSS"), " to NO_TRADE");
       }
 
-      // Update last day tracking
-      lastDayChecked = now;
-      lastDayOfYear = nowStruct.day_of_year;
+      // Store the new day
+      State.dayOfYear = dt.day_of_year;
 
-      // Display message in journal
-      Print("New trading day detected (", nowStruct.day_of_year, "). Resetting daily counters. Starting balance: ", State.dayStartBalance);
+      Print("Daily reset complete for day ", dt.day_of_year,
+            ". Starting balance: ", State.dayStartBalance,
+            ", FVG reset: ", !State.fvgFound);
    }
 }
 
@@ -491,8 +493,6 @@ void UpdateDailyPerformance() {
 //| Check if we can open more trades based on limits                 |
 //+------------------------------------------------------------------+
 bool CanOpenMoreTrades() {
-   // Note: ResetDailyCounters is now called in OnTimer, so we don't need to call it here
-
    // Debug info - add trade count to journal if at limit
    if(State.tradesOpenedToday >= MaxTradesPerDay) {
       Print("Max daily trades reached. Current count: ", State.tradesOpenedToday, "/", MaxTradesPerDay);
