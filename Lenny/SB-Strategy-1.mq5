@@ -36,8 +36,8 @@ datetime lastReset;
 // Input parameters
 input string ORStartTime = "16:30";           // Opening Range Start time (HH:MM)
 input string OREndTime = "17:00";             // Opening Range End time (HH:MM)
-input int startTradingHour = 17;              // Start trading hour (24h format)
-input int endTradingHour = 18;                // End trading hour (24h format)
+input int startTradingHour = 16;              // Start trading hour (1600 ==  9AM EST, No DST)
+input int endTradingHour = 19;                // End trading hour (1900 == 12PM EST, No DST)
 input bool DrawOnChart = true;                // Draw ranges on chart
 input int MaxSwingPoints = 10;                 // Number of swing points to identify
 input int MinFVGSearchRange = 10;             // Minimum bars to search for FVGs
@@ -80,8 +80,14 @@ bool IsSBHour() {
    TimeToStruct(now, dt);
 
    int hour = dt.hour;
+   int minute = dt.min;
 
-   if(hour >= startTradingHour && hour < endTradingHour) {
+   if(hour < startTradingHour || hour > endTradingHour) {
+      return false;
+   }
+
+   // Only trade during minutes 0-15 and 45-59
+   if((minute >= 0 && minute < 16) || (minute >= 45 && minute < 60)) {
       return true;
    }
 
