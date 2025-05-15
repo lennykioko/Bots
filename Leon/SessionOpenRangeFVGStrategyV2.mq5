@@ -90,7 +90,7 @@ input string SessionEndTime = "19:00";                 // Trading Session End
 // Trade settings
 input string TradeSettings = "===== Trade Settings ====="; // Trade Settings
 input double RiskPerTrade = 77.0;                     // Risk Per Trade (in dollars)
-input double RewardRiskRatio = 5.0;                    // Reward:Risk Ratio
+input double RewardRiskRatio = 3.0;                    // Reward:Risk Ratio
 input int    MaxTradesPerDay = 3;                      // Maximum Trades Per Day
 input int    MaxTradesPerHour = 2;                     // Maximum Trades Per Hour
 input double MaxLossPerDay = 3.0;                      // Max Loss Per Day (multiple of Risk)
@@ -117,11 +117,11 @@ input color  OpenRangeColor = clrGoldenrod;           // Opening Range color
 
 // Additional input parameters for trade management
 input string TradeManagementSettings = "===== Trade Management Settings ====="; // Trade Management
-input double BE_RRR_Level = 2;           // Move to Breakeven at R multiple
-input double PARTIAL_PROFIT_PERCENT = 0.5; // Take partial profit percentage at BE level
+input double BE_RRR_Level = 1.5;           // Move to Breakeven at R multiple
+input double PARTIAL_PROFIT_PERCENT = 0.4; // Take partial profit percentage at BE level
 input double PARTIAL_LOSS_RRR = 0.8;       // Take partial loss at R multiple
 input double PARTIAL_LOSS_PERCENT = 0.5;   // Partial loss percentage
-input int    MAX_SWING_POINTS = 5;         // Close trade after this many swing points taken
+input int    MAX_SWING_POINTS = 3;         // Close trade after this many swing points taken
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -664,27 +664,49 @@ bool CheckDayOfWeekFilter() {
 //| Check if current market volatility is suitable for trading       |
 //+------------------------------------------------------------------+
 bool CheckVolatilityFilter() {
-   // Calculate Average True Range (ATR) as volatility measure
-   double atr = iATR(_Symbol, PERIOD_M15, 14, 0);
-   double atrAverage = 0;
+   // Create ATR indicator handle
+   int atrHandle = iATR(_Symbol, PERIOD_M15, 14);
 
-   // Get average of last 5 ATR values
+   if (atrHandle == INVALID_HANDLE) {
+      Print("Error creating ATR handle: ", GetLastError());
+      return true; // Allow trading if we can't calculate ATR
+   }
+
+   // Arrays to store ATR values
+   double atrValues[];
+   ArraySetAsSeries(atrValues, true);
+
+   // Get the last 5 ATR values
+   if (CopyBuffer(atrHandle, 0, 0, 5, atrValues) <= 0) {
+      Print("Error copying ATR values: ", GetLastError());
+      IndicatorRelease(atrHandle);
+      return true; // Allow trading if we can't get ATR values
+   }
+
+   // Release the indicator handle
+   IndicatorRelease(atrHandle);
+
+   // Calculate average of last 5 ATR values
+   double atrAverage = 0;
    for (int i = 0; i < 5; i++) {
-      atrAverage += iATR(_Symbol, PERIOD_M15, 14, i);
+      atrAverage += atrValues[i];
    }
    atrAverage /= 5;
+
+   // Current ATR is the first value in the array
+   double currentAtr = atrValues[0];
 
    // Range of acceptable volatility (0.8 to 1.5 times the average)
    double minVolatility = atrAverage * 0.8;
    double maxVolatility = atrAverage * 1.5;
 
    // Current volatility should be within acceptable range
-   if (atr < minVolatility) {
+   if (currentAtr < minVolatility) {
       // Too low volatility, not enough movement for our strategy
       return false;
    }
 
-   if (atr > maxVolatility) {
+   if (currentAtr > maxVolatility) {
       // Too high volatility, might be risky or erratic
       return false;
    }
