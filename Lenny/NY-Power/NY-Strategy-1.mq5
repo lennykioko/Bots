@@ -69,7 +69,7 @@ input string     AsianStartTime = "01:00";       // 1800 NY = 0100 KE no DST (HH
 input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonStartTime = "07:00";       // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonEndTime = "13:00";         // 0600 NY = 1300 KE no DST (HH:MM)
-input int        startTradingHour = 17;       // 1000 NY = 1400 KE no DST (24H)
+input int        startTradingHour = 17;       // 1000 NY = 1700 KE no DST (24H)
 input int        endTradingHour = 19;         // 1200 NY = 1900 KE no DST (24H)
 
 // Market structure parameters
@@ -419,9 +419,7 @@ bool IsNYHour() {
    TimeToStruct(now, dt);
 
    if(dt.hour >= startTradingHour && dt.hour <= endTradingHour) {
-      if((dt.min >= 45) || (dt.min <= 15)) {
-         return true;
-      }
+      return true;
    }
    return false;
 }
