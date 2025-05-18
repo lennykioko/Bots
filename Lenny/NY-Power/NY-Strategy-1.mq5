@@ -451,6 +451,8 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
       return false;
    }
 
+   double highestFVGCandleHigh = MathMax(iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar), iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar + 1));
+
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
       double keyLevel = keyLevels[i];
@@ -459,6 +461,14 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          if(i - 1 >= 0) {
             Print("Next key level: ", DoubleToString(keyLevels[i - 1], _Digits));
+            if(i - 1 == 0) {
+               if(MathAbs(prevClose - keyLevels[i - 1]) < MathAbs(highestFVGCandleHigh - prevClose)) {
+                  Print("keyLevel draw not worth the risk");
+                  return false;
+               } else {
+                  return true;
+               }
+            }
             return true;
          } else {
             Print("No next key level found");
@@ -477,6 +487,8 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
       return false;
    }
 
+   double lowestFVGCandleLow = MathMin(iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar), iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar + 1));
+
    // Loop through each key level
    for(int i = 0; i < ArraySize(keyLevels); i++) {
       double keyLevel = keyLevels[i];
@@ -485,6 +497,14 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          if(i + 1 < ArraySize(keyLevels)) {
             Print("Next key level: ", DoubleToString(keyLevels[i + 1], _Digits));
+            if(i + 1 == ArraySize(keyLevels) - 1) {
+               if(MathAbs(keyLevels[i + 1] - prevClose) < MathAbs(prevClose - lowestFVGCandleLow)) {
+                  Print("keyLevel draw not worth the risk");
+                  return false;
+               } else {
+                  return true;
+               }
+            }
             return true;
          } else {
             Print("No next key level found");
