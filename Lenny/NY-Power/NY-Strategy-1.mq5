@@ -461,10 +461,10 @@ bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], dou
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          if(i - 1 >= 0) {
             Print("Next key level: ", DoubleToString(keyLevels[i - 1], _Digits));
-            if(i - 1 == 0 && MathAbs(prevClose - keyLevels[i - 1]) < MathAbs(highestFVGCandleHigh - prevClose)) {
-               Print("keyLevel draw not worth the risk");
-               return false;
-            }
+            // if(i - 1 == 0 && MathAbs(prevClose - keyLevels[i - 1]) < MathAbs(highestFVGCandleHigh - prevClose)) {
+            //    Print("keyLevel draw not worth the risk");
+            //    return false;
+            // }
             return true;
          } else {
             Print("No next key level found");
@@ -493,10 +493,10 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
          Print("Strong reaction at key level: ", DoubleToString(keyLevel, _Digits));
          if(i + 1 < ArraySize(keyLevels)) {
             Print("Next key level: ", DoubleToString(keyLevels[i + 1], _Digits));
-            if(i + 1 == ArraySize(keyLevels) - 1 && MathAbs(keyLevels[i + 1] - prevClose) < MathAbs(prevClose - lowestFVGCandleLow)) {
-               Print("keyLevel draw not worth the risk");
-               return false;
-            }
+            // if(i + 1 == ArraySize(keyLevels) - 1 && MathAbs(keyLevels[i + 1] - prevClose) < MathAbs(prevClose - lowestFVGCandleLow)) {
+            //    Print("keyLevel draw not worth the risk");
+            //    return false;
+            // }
             return true;
          } else {
             Print("No next key level found");
