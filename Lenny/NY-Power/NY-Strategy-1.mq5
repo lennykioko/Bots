@@ -48,6 +48,8 @@ struct StrategyState {
    double           startDayBalance;  // Balance at start of trading day
    datetime         lastReset;        // Last reset datetime
    datetime         lastDisplayUpdate;  // Last display update time
+   double           startMonthBalance;  // Balance at start of trading month
+   datetime         lastMonthReset;    // Last month reset datetime
 
    // Constructor with default values
    void StrategyState() {
@@ -57,6 +59,8 @@ struct StrategyState {
       startDayBalance = 0.0;
       lastReset = 0;
       lastDisplayUpdate = 0;
+      startMonthBalance = 0.0;
+      lastMonthReset = 0;
    }
 };
 
@@ -86,6 +90,8 @@ input double     RiskDollars = 100.0;         // Risk in dollars per trade
 input double     MinRRR = 2.5;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
+input double     MonthlyTarget = 1000;         // Monthly target in account currency
+input bool       UseMonthlyTarget = true;     // Use Monthly target
 
 // Position management parameters
 input bool       UseBreakeven = true;        // Use breakeven for positions
@@ -157,6 +163,21 @@ void OnTimer() {
       state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       state.lastReset = now;
       Print("New day detected. Starting Day balance reset to: ", DoubleToString(state.startDayBalance, 2));
+   }
+
+   // Reset month balance if needed
+   if(UseMonthlyTarget) {
+      MqlDateTime lastMonthResetDT;
+      if(state.lastMonthReset > 0) {
+         TimeToStruct(state.lastMonthReset, lastMonthResetDT);
+      }
+
+      // Reset if it's a new month or if lastMonthReset has never been set
+      if(state.lastMonthReset == 0 || lastMonthResetDT.mon != dt.mon || lastMonthResetDT.year != dt.year) {
+         state.startMonthBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+         state.lastMonthReset = now;
+         Print("New month detected. Starting Month balance reset to: ", DoubleToString(state.startMonthBalance, 2));
+      }
    }
 
    // Update market structure elements and display
@@ -241,6 +262,12 @@ void UpdateDisplayInfo() {
    string dayPnLMsg = "Day P/L: $" + DoubleToString(dayPnL, 2);
    color pnlColor = (dayPnL >= 0) ? PositiveCondColor : NegativeCondColor;
    addTextOnScreen(dayPnLMsg, pnlColor);
+
+   // Show month P/L
+   double monthPnL = AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance;
+   string monthPnLMsg = "Month P/L: $" + DoubleToString(monthPnL, 2);
+   color monthPnlColor = (monthPnL >= 0) ? PositiveCondColor : NegativeCondColor;
+   addTextOnScreen(monthPnLMsg, monthPnlColor);
 
    // Show current trading conditions
    bool inNYHour = IsNYHour();
@@ -430,6 +457,7 @@ bool IsNYHour() {
 bool AccountRiskValid() {
    double currentBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double dayPnL = currentBalance - state.startDayBalance;
+   double monthPnL = currentBalance - state.startMonthBalance;
 
    // Check if daily loss is exceeded (negative dayPnL beyond the limit)
    bool lossExceeded = (dayPnL <= -MaxDailyLoss);
@@ -437,12 +465,19 @@ bool AccountRiskValid() {
    // Check if daily target is reached (positive dayPnL reaching the target)
    bool targetReached = (dayPnL >= DailyTarget);
 
+   // Check if monthly target is reached (positive monthPnL reaching the target)
+   bool monthlyTargetReached;
+   if(UseMonthlyTarget) {
+      monthlyTargetReached = (monthPnL >= MonthlyTarget);
+   }
+
    // Debug output
    if(lossExceeded) Print("Daily loss limit exceeded: $", DoubleToString(dayPnL, 2));
    if(targetReached) Print("Daily profit target reached: $", DoubleToString(dayPnL, 2));
+   if(UseMonthlyTarget && monthlyTargetReached) Print("Monthly profit target reached: $", DoubleToString(monthPnL, 2));
 
    // Return valid if neither condition is true
-   return !(lossExceeded || targetReached);
+   return !(lossExceeded || targetReached || (UseMonthlyTarget && monthlyTargetReached));
 }
 
 bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], double prevClose) {
