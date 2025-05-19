@@ -199,7 +199,7 @@ void OnTimer() {
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
    state.prevDayLow = iLow(_Symbol, PERIOD_D1, 1);
 
-   ArrayResize(state.keyLevels, 6);
+   ArrayResize(state.keyLevels, 8);
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
