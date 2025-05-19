@@ -83,7 +83,7 @@ input int        MinFVGSearchRange = 10;      // Minimum bars to search for FVGs
 input int        FVGLookBackBars = 2;         // FVG lookback bars
 input int        SMA_Period = 20;             // SMA period for trend confirmation
 input double     BufferPips = 1.0;            // Buffer in pips for stop loss
-double           MinGapSize = 5.0;            // Minimum gap size in pips for FVGs
+double           MinGapSize = 2.5;            // Minimum gap size in pips for FVGs
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
@@ -130,7 +130,7 @@ int OnInit() {
 //| Expert deinitialization function                                 |
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason) {
-   ObjectsDeleteAll(ChartID(), "");
+   // ObjectsDeleteAll(ChartID(), ""); // keep objects for post-trading analysis
    EventKillTimer();
    Print("NY-Strategy-1 deinitialized");
 }
@@ -558,7 +558,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bullish FVGs after swing lows");
          if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
             Print("Found swing lows rejecting key level");
-            if(prevLow > state.bullishFVGs[0].low && prevLow < (state.bullishFVGs[0].high + (BufferPips * GetPipValue())) && prevClose >= state.bullishFVGs[0].high) {
+            if(prevLow > state.bullishFVGs[0].low && prevLow < (state.bullishFVGs[0].high + (BufferPips * GetPipValue())) && prevClose >= state.bullishFVGs[0].midpoint) {
                Print("Price is inside bullish FVGs");
                return LONG;
             }
@@ -573,7 +573,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bearish FVGs after swing highs");
          if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
             Print("Found swing highs rejecting key level");
-            if(prevHigh < state.bearishFVGs[0].low && prevHigh > (state.bearishFVGs[0].high - (BufferPips * GetPipValue())) && prevClose <= state.bearishFVGs[0].high) {
+            if(prevHigh < state.bearishFVGs[0].low && prevHigh > (state.bearishFVGs[0].high - (BufferPips * GetPipValue())) && prevClose <= state.bearishFVGs[0].midpoint) {
                Print("Price is inside bearish FVGs");
                return SHORT;
             }
