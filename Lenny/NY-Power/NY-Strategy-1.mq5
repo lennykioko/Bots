@@ -91,6 +91,7 @@ input double     MinRRR = 3.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
 input double     MonthlyTarget = 800;         // Monthly target in account currency
+input double     MonthlyMaxLoss = 800;        // Monthly maximum loss in account currency
 input bool       UseMonthlyTarget = true;     // Use Monthly target
 
 // Position management parameters
@@ -466,18 +467,20 @@ bool AccountRiskValid() {
    bool targetReached = (dayPnL >= DailyTarget);
 
    // Check if monthly target is reached (positive monthPnL reaching the target)
-   bool monthlyTargetReached;
+   bool monthlyTargetReached, monthlyLossExceeded;
    if(UseMonthlyTarget) {
       monthlyTargetReached = (monthPnL >= MonthlyTarget);
    }
+   monthlyLossExceeded = (monthPnL <= -MonthlyMaxLoss);
 
    // Debug output
    if(lossExceeded) Print("Daily loss limit exceeded: $", DoubleToString(dayPnL, 2));
    if(targetReached) Print("Daily profit target reached: $", DoubleToString(dayPnL, 2));
    if(UseMonthlyTarget && monthlyTargetReached) Print("Monthly profit target reached: $", DoubleToString(monthPnL, 2));
+   if(monthlyLossExceeded) Print("Monthly loss limit exceeded: $", DoubleToString(monthPnL, 2));
 
    // Return valid if neither condition is true
-   return !(lossExceeded || targetReached || (UseMonthlyTarget && monthlyTargetReached));
+   return !(lossExceeded || targetReached || monthlyLossExceeded || (UseMonthlyTarget && monthlyTargetReached));
 }
 
 bool SwingHighsRejectingLevel(SwingPoint &swingHighs[], double &keyLevels[], double prevClose) {
@@ -558,7 +561,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bullish FVGs after swing lows");
          if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
             Print("Found swing lows rejecting key level");
-            if(prevLow > state.bullishFVGs[0].low && prevLow < (state.bullishFVGs[0].high + (BufferPips * GetPipValue())) && prevClose >= state.bullishFVGs[0].midpoint) {
+            if(prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose >= state.bullishFVGs[0].midpoint) {
                Print("Price is inside bullish FVGs");
                return LONG;
             }
@@ -573,7 +576,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bearish FVGs after swing highs");
          if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
             Print("Found swing highs rejecting key level");
-            if(prevHigh < state.bearishFVGs[0].low && prevHigh > (state.bearishFVGs[0].high - (BufferPips * GetPipValue())) && prevClose <= state.bearishFVGs[0].midpoint) {
+            if(prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose <= state.bearishFVGs[0].midpoint) {
                Print("Price is inside bearish FVGs");
                return SHORT;
             }
