@@ -87,7 +87,7 @@ double           MinGapSize = 2.5;            // Minimum gap size in pips for FV
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
-input double     MinRRR = 2.5;                // Minimum risk to reward ratio
+input double     MinRRR = 3.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 200;          // Maximum daily loss in account currency
 input double     DailyTarget = 200;           // Daily target in account currency
 input double     MonthlyTarget = 800;         // Monthly target in account currency
