@@ -69,13 +69,13 @@ StrategyState state;  // Main strategy state
 
 //--- Input parameters
 // Opening Range parameters
-input bool       isDST = true;                                        // isDST period
-input string     AsianStartTime = (isDST ? "01:00" : "00:00");       // 1800 NY = 0100 KE no DST (HH:MM)
-input string     AsianEndTime = (isDST ? "07:00" : "06:00");         // 0000 NY = 0700 KE no DST (HH:MM)
-input string     LondonStartTime = (isDST ? "07:00": "06:00");       // 0000 NY = 0700 KE no DST (HH:MM)
-input string     LondonEndTime = (isDST ? "13:00": "12:00");         // 0600 NY = 1300 KE no DST (HH:MM)
-input int        startTradingHour = (isDST ? 17 : 16);              // 1000 NY = 1700 KE no DST (24H)
-input int        endTradingHour = (isDST ? 19: 18);                // 1200 NY = 1900 KE no DST (24H)
+input bool       isDST = true;                    // isDST period
+input string     AsianStartTime = "01:00";       // 1800 NY = 0100 KE no DST (HH:MM)
+input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH:MM)
+input string     LondonStartTime = "07:00";      // 0000 NY = 0700 KE no DST (HH:MM)
+input string     LondonEndTime = "13:00";        // 0600 NY = 1300 KE no DST (HH:MM)
+input int        startTradingHour = 17;          // 1000 NY = 1700 KE no DST (24H)
+input int        endTradingHour = 19;            // 1200 NY = 1900 KE no DST (24H)
 
 // Market structure parameters
 input bool       DrawOnChart = true;          // Draw ranges on chart
@@ -122,6 +122,16 @@ int OnInit() {
    if(ShowTextOnChart) {
       clearTextDisplay();
       addTextOnScreen("NY-Strategy-1 initialized", InfoTextColor);
+   }
+
+   if(!isDST) {
+      AsianStartTime = "00:00";
+      AsianEndTime = "06:00";
+      LondonStartTime = "06:00";
+      LondonEndTime = "12:00";
+      startTradingHour = 16;
+      endTradingHour = 18;
+      Print("DST adjustment done successfully");
    }
 
    Print("NY-Strategy-1 initialized successfully");
