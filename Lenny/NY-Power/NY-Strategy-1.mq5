@@ -200,15 +200,13 @@ void OnTimer() {
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
    state.prevDayLow = iLow(_Symbol, PERIOD_D1, 1);
 
-   ArrayResize(state.keyLevels, 8);
+   ArrayResize(state.keyLevels, 6);
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
    state.keyLevels[2] = state.asianRanges[0].high;
-   state.keyLevels[3] = state.asianRanges[0].middle;
-   state.keyLevels[4] = state.asianRanges[0].low;
-   state.keyLevels[5] = state.londonRanges[0].high;
-   state.keyLevels[6] = state.londonRanges[0].middle;
-   state.keyLevels[7] = state.londonRanges[0].low;
+   state.keyLevels[3] = state.asianRanges[0].low;
+   state.keyLevels[4] = state.londonRanges[0].high;
+   state.keyLevels[5] = state.londonRanges[0].low;
 
    // sort the key levels
    ArraySort(state.keyLevels);
