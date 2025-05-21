@@ -193,8 +193,8 @@ void OnTimer() {
 
    // Get key levels
    // Detect asian and london range
-   bool asainRangeFound = GetRanges(AsianStartTime, AsianEndTime, state.asianRanges, 0, "AR", DrawOnChart, PERIOD_CURRENT);
-   bool londonRangeFound = GetRanges(LondonStartTime, LondonEndTime, state.londonRanges, 0, "LR", DrawOnChart, PERIOD_CURRENT);
+   bool asainRangeFound = GetRanges(AsianStartTime, AsianEndTime, state.asianRanges, 0, "AR", DrawOnChart, PERIOD_CURRENT, true, true, false);
+   bool londonRangeFound = GetRanges(LondonStartTime, LondonEndTime, state.londonRanges, 0, "LR", DrawOnChart, PERIOD_CURRENT, true, true, false);
    if(!asainRangeFound || !londonRangeFound) return;
 
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
