@@ -141,11 +141,6 @@ void OnDeinit(const int reason) {
 //| Timer event function                                             |
 //+------------------------------------------------------------------+
 void OnTimer() {
-   if(!IsNYHour() || !AccountRiskValid()) {
-      // If not in NY hour or not risk valid, do not execute trading logic
-      return;
-   }
-
    // Check if trading is allowed by system
    isTradingAllowedBySystem();
 
@@ -180,6 +175,11 @@ void OnTimer() {
          state.lastMonthReset = now;
          Print("New month detected. Starting Month balance reset to: ", DoubleToString(state.startMonthBalance, 2));
       }
+   }
+
+   if(!IsNYHour() || !AccountRiskValid()) {
+      // If not in NY hour or not risk valid, do not execute trading logic
+      return;
    }
 
    // Update market structure elements and display
