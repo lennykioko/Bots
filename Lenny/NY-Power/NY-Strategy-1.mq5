@@ -140,8 +140,8 @@ void OnDeinit(const int reason) {
 //| Timer event function                                             |
 //+------------------------------------------------------------------+
 void OnTimer() {
-   if(!IsNYHour()) {
-      // If not in NY hour, do not execute trading logic
+   if(!IsNYHour() || !AccountRiskValid()) {
+      // If not in NY hour or not risk valid, do not execute trading logic
       return;
    }
 
