@@ -83,7 +83,7 @@ input int        MinFVGSearchRange = 10;      // Minimum bars to search for FVGs
 input int        FVGLookBackBars = 2;         // FVG lookback bars
 input int        SMA_Period = 20;             // SMA period for trend confirmation
 input double     BufferPips = 1.0;            // Buffer in pips for stop loss
-double           MinGapSize = 2.5;            // Minimum gap size in pips for FVGs
+double           MinGapSize = 5.0;            // Minimum gap size in pips for FVGs
 
 // Money management parameters
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
@@ -535,14 +535,11 @@ bool SwingLowsRejectingLevel(SwingPoint &swingLows[], double &keyLevels[], doubl
    return false;
 }
 
-int FilterFVGs(FVG &fvgs[]) {
-   int validCount = 0;
-   for(int i = 0; i < ArraySize(fvgs); i++) {
-      if(!fvgs[i].isFilled && fvgs[i].gapSize >= MinGapSize * GetPipValue()) {
-         validCount++;
-      }
+int FilterFVG(FVG &fvgs[], int idx = 0) {
+   if(!fvgs[idx].isFilled && fvgs[idx].gapSize >= MinGapSize * GetPipValue()) {
+      return true;
    }
-   return validCount;
+   return false;
 }
 
 //+------------------------------------------------------------------+
@@ -556,12 +553,11 @@ TRADE_DIRECTION CheckForEntrySignals() {
 
    // LONG signal
    if(ArraySize(state.swingLows) > 0 && aboveSMA && ArraySize(state.bullishFVGs) > 0) {
-      GetBullishFVGs(FVGLookBackBars, state.swingLows[0].bar, state.bullishFVGs, MinFVGSearchRange, DrawOnChart, clrGreenYellow, false);
-      if(ArraySize(state.bullishFVGs) >= 1 && FilterFVGs(state.bullishFVGs) >= 1) {
-         Print("Found at least 1 valid bullish FVGs after swing lows");
+      if(ArraySize(state.bullishFVGs) >= 1 && FilterFVG(state.bullishFVGs)) {
+         Print("Found at least 1 valid bullish FVG");
          if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
             Print("Found swing lows rejecting key level");
-            if(prevLow > state.bullishFVGs[0].low && prevLow < (state.bullishFVGs[0].high + (BufferPips * GetPipValue())) && prevClose >= state.bullishFVGs[0].midpoint) {
+            if(prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose > state.bullishFVGs[0].midpoint && prevClose > prevLow) {
                Print("Price is inside bullish FVGs");
                return LONG;
             }
@@ -571,12 +567,11 @@ TRADE_DIRECTION CheckForEntrySignals() {
 
    // SHORT signal
    if(ArraySize(state.swingHighs) > 0 && !aboveSMA && ArraySize(state.bearishFVGs) > 0) {
-      GetBearishFVGs(FVGLookBackBars, state.swingHighs[0].bar, state.bearishFVGs, MinFVGSearchRange, DrawOnChart, clrDeepPink, false);
-      if(ArraySize(state.bearishFVGs) >= 1 && FilterFVGs(state.bearishFVGs) >= 1) {
-         Print("Found at least 1 valid bearish FVGs after swing highs");
+      if(ArraySize(state.bearishFVGs) >= 1 && FilterFVG(state.bearishFVGs)) {
+         Print("Found at least 1 valid bearish FVG");
          if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
             Print("Found swing highs rejecting key level");
-            if(prevHigh < state.bearishFVGs[0].low && prevHigh > (state.bearishFVGs[0].high - (BufferPips * GetPipValue())) && prevClose <= state.bearishFVGs[0].midpoint) {
+            if(prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose < state.bearishFVGs[0].midpoint && prevClose < prevHigh) {
                Print("Price is inside bearish FVGs");
                return SHORT;
             }
