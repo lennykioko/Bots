@@ -115,6 +115,7 @@ int OnInit() {
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   state.startMonthBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    state.beRRR = BeRRR;
 
    // Initialize display
