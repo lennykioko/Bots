@@ -556,7 +556,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bullish FVG");
          if(SwingLowsRejectingLevel(state.swingLows, state.keyLevels, prevClose)) {
             Print("Found swing lows rejecting key level");
-            if(prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose > state.bullishFVGs[0].midpoint && prevClose > prevLow) {
+            if(prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose > state.bullishFVGs[0].high && prevClose > prevLow) {
                Print("Price is inside bullish FVGs");
                return LONG;
             }
@@ -570,7 +570,7 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found at least 1 valid bearish FVG");
          if(SwingHighsRejectingLevel(state.swingHighs, state.keyLevels, prevClose)) {
             Print("Found swing highs rejecting key level");
-            if(prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose < state.bearishFVGs[0].midpoint && prevClose < prevHigh) {
+            if(prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose < state.bearishFVGs[0].high && prevClose < prevHigh) {
                Print("Price is inside bearish FVGs");
                return SHORT;
             }
