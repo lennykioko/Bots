@@ -39,6 +39,8 @@ struct StrategyState {
    double           keyLevels[];     // Key levels
    double           prevDayHigh;     // Previous day high
    double           prevDayLow;      // Previous day low
+   double           prevWeekHigh;    // Previous week high
+   double           prevWeekLow;     // Previous week low
 
    // Position management
    double           entryPrice;       // Entry price for position
@@ -74,8 +76,10 @@ input string     AsianStartTime = "01:00";       // 1800 NY = 0100 KE no DST (HH
 input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonStartTime = "07:00";      // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonEndTime = "13:00";        // 0600 NY = 1300 KE no DST (HH:MM)
-input int        startTradingHour = 17;          // 1000 NY = 1700 KE no DST (24H)
-input int        endTradingHour = 19;            // 1200 NY = 1900 KE no DST (24H)
+input int        startTradingHourAM = 17;          // 1000 NY = 1700 KE no DST (24H)
+input int        endTradingHourAM = 18;            // 1200 NY = 1900 KE no DST (24H)
+input int        startTradingHourPM = 21;          // 1400 NY = 2100 KE no DST (24H)
+input int        endTradingHourPM = 22;            // 1500 NY = 2200 KE no DST (24H)
 
 // Market structure parameters
 input bool       DrawOnChart = true;          // Draw ranges on chart
@@ -200,14 +204,18 @@ void OnTimer() {
 
    state.prevDayHigh = iHigh(_Symbol, PERIOD_D1, 1);
    state.prevDayLow = iLow(_Symbol, PERIOD_D1, 1);
+   state.prevWeekHigh = iHigh(_Symbol, PERIOD_W1, 1);
+   state.prevWeekLow = iLow(_Symbol, PERIOD_W1, 1);
 
-   ArrayResize(state.keyLevels, 6);
+   ArrayResize(state.keyLevels, 8);
    state.keyLevels[0] = state.prevDayHigh;
    state.keyLevels[1] = state.prevDayLow;
-   state.keyLevels[2] = state.asianRanges[0].high;
-   state.keyLevels[3] = state.asianRanges[0].low;
-   state.keyLevels[4] = state.londonRanges[0].high;
-   state.keyLevels[5] = state.londonRanges[0].low;
+   state.keyLevels[2] = state.prevWeekHigh;
+   state.keyLevels[3] = state.prevWeekLow;
+   state.keyLevels[4] = state.asianRanges[0].high;
+   state.keyLevels[5] = state.asianRanges[0].low;
+   state.keyLevels[6] = state.londonRanges[0].high;
+   state.keyLevels[7] = state.londonRanges[0].low;
 
    // sort the key levels
    ArraySort(state.keyLevels);
@@ -216,6 +224,8 @@ void OnTimer() {
    if(DrawOnChart) {
       DrawKeyLevel(state.prevDayHigh, "PDH", clrDodgerBlue);
       DrawKeyLevel(state.prevDayLow, "PDL", clrLightPink);
+      DrawKeyLevel(state.prevWeekHigh, "PWH", clrCornflowerBlue);
+      DrawKeyLevel(state.prevWeekLow, "PWL", clrTomato);
    }
 
    // Process trading logic
@@ -251,8 +261,11 @@ void UpdateDisplayInfo() {
    addTextOnScreen(timeStrMsg, InfoTextColor);
 
    // Show trading session info
-   string tradeHoursMsg = "Trading Hours: " + IntegerToString(startTradingHour) + ":00 - " + IntegerToString(endTradingHour) + ":00";
+   string tradeHoursAMMsg = "Trading Hours AM: " + IntegerToString(startTradingHourAM) + ":00 - " + IntegerToString(endTradingHourAM) + ":00";
    addTextOnScreen(tradeHoursMsg, InfoTextColor);
+
+   string tradeHoursPMMsg = "Trading Hours PM: " + IntegerToString(startTradingHourPM) + ":00 - " + IntegerToString(endTradingHourPM) + ":00";
+   addTextOnScreen(tradeHoursPMMsg, InfoTextColor);
 
    // Show account info
    string accountMsg = "Account Balance: $" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2);
@@ -301,6 +314,9 @@ void UpdateDisplayInfo() {
    string prevDayMsg = "PDH: " + DoubleToString(state.prevDayHigh, _Digits) +
                         " PDL: " + DoubleToString(state.prevDayLow, _Digits);
    addTextOnScreen(prevDayMsg, InfoTextColor);
+
+   string prevWeekMsg = "PWH: " + DoubleToString(state.prevWeekHigh, _Digits) +
+                        " PWL: " + DoubleToString(state.prevWeekLow, _Digits);
 
    // Show current price vs. MA
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
@@ -450,9 +466,14 @@ bool IsNYHour() {
    MqlDateTime dt;
    TimeToStruct(now, dt);
 
-   if(dt.hour >= startTradingHour && dt.hour < endTradingHour) {
+   if(dt.hour >= startTradingHourAM && dt.hour < endTradingHourAM) {
       return true;
    }
+
+   if(dt.hour >= startTradingHourPM && dt.hour < endTradingHourPM) {
+      return true;
+   }
+   
    return false;
 }
 
