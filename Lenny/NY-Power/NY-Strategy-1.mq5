@@ -317,6 +317,7 @@ void UpdateDisplayInfo() {
 
    string prevWeekMsg = "PWH: " + DoubleToString(state.prevWeekHigh, _Digits) +
                         " PWL: " + DoubleToString(state.prevWeekLow, _Digits);
+   addTextOnScreen(prevWeekMsg, InfoTextColor);
 
    // Show current price vs. MA
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
