@@ -17,6 +17,7 @@
 #include <Helpers\OrderManagement.mqh>
 #include <Helpers\GetIndicators.mqh>
 #include <Helpers\TextDisplay.mqh>
+#include <Helpers\GetNews.mqh>
 #include <Trade\Trade.mqh>
 
 //--- Enumerations
@@ -177,8 +178,8 @@ void OnTimer() {
       }
    }
 
-   if(!IsNYHour() || !AccountRiskValid()) {
-      // If not in NY hour or not risk valid, do not execute trading logic
+   if(!IsNYHour() || !AccountRiskValid() || !IsTradingAllowedByNews()) {
+      // If not in NY hour or not risk valid or news trading not allowed, do not execute trading logic
       return;
    }
 
@@ -272,8 +273,10 @@ void UpdateDisplayInfo() {
    // Show current trading conditions
    bool inNYHour = IsNYHour();
    bool riskValid = AccountRiskValid();
+   bool newsAllowed = IsTradingAllowedByNews();
    string timeCondMsg = "Trading Hour: " + (inNYHour ? "YES" : "NO");
    string riskCondMsg = "Risk Valid: " + (riskValid ? "YES" : "NO");
+   string newsCondMsg = "News Trading Allowed: " + (newsAllowed ? "YES" : "NO");
 
    addTextOnScreen(timeCondMsg, inNYHour ? PositiveCondColor : NegativeCondColor);
    addTextOnScreen(riskCondMsg, riskValid ? PositiveCondColor : NegativeCondColor);
@@ -377,7 +380,8 @@ void ShowSignalConditions() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
    bool inNYHour = IsNYHour();
    bool riskValid = AccountRiskValid();
-   bool tradingConditionsValid = inNYHour && riskValid;
+   bool newsAllowed = IsTradingAllowedByNews();
+   bool tradingConditionsValid = inNYHour && riskValid && newsAllowed;
 
    // Long conditions
    bool aboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
@@ -586,10 +590,11 @@ TRADE_DIRECTION CheckForEntrySignals() {
 //+------------------------------------------------------------------+
 void ExecuteTradeSignal(TRADE_DIRECTION signal) {
    // Check trading conditions
-   if(!IsNYHour() || !AccountRiskValid() || signal == NO_DIRECTION) {
+   if(!IsNYHour() || !AccountRiskValid() || signal == NO_DIRECTION || !IsTradingAllowedByNews() ) {
       Print("Trading conditions not met: ",
-            IsNYHour() ? "In NY hour" : "Not in NY hour", ", ",
-            AccountRiskValid() ? "Account risk valid" : "Account risk invalid");
+            IsNYHour() ? "In NY hour" : "NOT in NY hour", ", ",
+            AccountRiskValid() ? "Account risk valid" : "Account risk NOT valid"
+            IsTradingAllowedByNews() ? "News trading allowed" : "News trading NOT allowed");
       return;
    }
 
