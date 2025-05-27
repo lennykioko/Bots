@@ -262,7 +262,7 @@ void UpdateDisplayInfo() {
 
    // Show trading session info
    string tradeHoursAMMsg = "Trading Hours AM: " + IntegerToString(startTradingHourAM) + ":00 - " + IntegerToString(endTradingHourAM) + ":00";
-   addTextOnScreen(tradeHoursMsg, InfoTextColor);
+   addTextOnScreen(tradeHoursAMMsg, InfoTextColor);
 
    string tradeHoursPMMsg = "Trading Hours PM: " + IntegerToString(startTradingHourPM) + ":00 - " + IntegerToString(endTradingHourPM) + ":00";
    addTextOnScreen(tradeHoursPMMsg, InfoTextColor);
@@ -473,7 +473,7 @@ bool IsNYHour() {
    if(dt.hour >= startTradingHourPM && dt.hour < endTradingHourPM) {
       return true;
    }
-   
+
    return false;
 }
 
