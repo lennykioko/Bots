@@ -593,7 +593,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
    if(!IsNYHour() || !AccountRiskValid() || signal == NO_DIRECTION || !IsTradingAllowedByNews() ) {
       Print("Trading conditions not met: ",
             IsNYHour() ? "In NY hour" : "NOT in NY hour", ", ",
-            AccountRiskValid() ? "Account risk valid" : "Account risk NOT valid"
+            AccountRiskValid() ? "Account risk valid" : "Account risk NOT valid", ", ",
             IsTradingAllowedByNews() ? "News trading allowed" : "News trading NOT allowed");
       return;
    }
