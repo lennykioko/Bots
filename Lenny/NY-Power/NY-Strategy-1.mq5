@@ -280,6 +280,7 @@ void UpdateDisplayInfo() {
 
    addTextOnScreen(timeCondMsg, inNYHour ? PositiveCondColor : NegativeCondColor);
    addTextOnScreen(riskCondMsg, riskValid ? PositiveCondColor : NegativeCondColor);
+   addTextOnScreen(newsCondMsg, newsAllowed ? PositiveCondColor : NegativeCondColor);
 
    // Show market structure
    if(ArraySize(state.asianRanges) > 0) {
