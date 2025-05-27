@@ -77,7 +77,7 @@ input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH
 input string     LondonStartTime = "07:00";      // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonEndTime = "13:00";        // 0600 NY = 1300 KE no DST (HH:MM)
 input int        startTradingHourAM = 17;          // 1000 NY = 1700 KE no DST (24H)
-input int        endTradingHourAM = 18;            // 1200 NY = 1900 KE no DST (24H)
+input int        endTradingHourAM = 18;            // 1100 NY = 1800 KE no DST (24H)
 input int        startTradingHourPM = 21;          // 1400 NY = 2100 KE no DST (24H)
 input int        endTradingHourPM = 22;            // 1500 NY = 2200 KE no DST (24H)
 
