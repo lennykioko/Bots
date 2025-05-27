@@ -8,29 +8,17 @@
 #property version   "1.00"
 #property strict
 
-input int InpCheckIntervalMinutes = 30;    // Check interval in minutes
-input int InpHoursAhead = 24;              // Hours ahead to check for news
-
-#include <Arrays\ArrayObj.mqh>
-#include <Arrays\ArrayString.mqh>
 #include <Helpers\TextDisplay.mqh>
-
-MqlCalendarCountry countries[];
-MqlCalendarValue newsValues[];
-MqlCalendarEvent newsEvents[];
-ulong eventIds[];
-datetime lastCheck = 0;
 
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
 int OnInit() {
-    EventSetTimer(5);
+    EventSetTimer(100);
     clearTextDisplay();
-    LoadCountriesData();
-    CheckHighImpactNews();
     Print("CheckNews initialized successfully");
+    GetNewsByDUration();
     return(INIT_SUCCEEDED);
 }
 
@@ -52,173 +40,120 @@ void OnTimer() {
     Print("Current time: ", timeStr);
     clearTextDisplay();
     addTextOnScreen(timeStr, clrWhite);
-
-    if(TimeCurrent() - lastCheck >= InpCheckIntervalMinutes * 60) {
-        CheckHighImpactNews();
-        lastCheck = TimeCurrent();
-    }
+    GetNewsByDUration();
 }
 
 //+------------------------------------------------------------------+
 //| Functions to check for news events                               |
 //+------------------------------------------------------------------+
-bool LoadCountriesData() {
-    int total = CalendarCountries(countries);
-    if(total <= 0) {
-        Print("Failed to load calendar countries");
-        return false;
-    }
-
-    Print("Loaded ", total, " countries");
-    return true;
-}
-
-ulong GetUSCountryId() {
-    for(int i = 0; i < ArraySize(countries); i++) {
-        if(countries[i].code == "US" || countries[i].code == "USD") {
-            return countries[i].id;
-        }
-    }
-    return 0;
-}
-
-void CheckHighImpactNews() {
-    datetime timeFrom = TimeCurrent();
-    datetime timeTo = timeFrom + InpHoursAhead * 3600; // Check next 24 hours
-
-    ulong countryId = GetUSCountryId();
-    if(countryId == 0) {
-        Print("US country not found in calendar");
-        return;
-    }
-
-    int totalValues = CalendarValueHistory(newsValues, timeFrom, timeTo, countryId);
-    if(totalValues <= 0) {
-        Print("No news events found for the next 24 hours");
-        return;
-    }
-
-    ArrayResize(eventIds, totalValues);
-
-    for(int i = 0; i < totalValues; i++) {
-        eventIds[i] = newsValues[i].event_id;
-    }
-
-    // Remove duplicates
-    int uniqueCount = RemoveDuplicateIds(eventIds);
-    ArrayResize(eventIds, uniqueCount);
-
-    int totalEvents = CalendarEventById(newsEvents, eventIds);
-    if(totalEvents <= 0) {
-        Print("Failed to get event details");
-        return;
-    }
-
-    ProcessHighImpactEvents(newsEvents, newsValues);
-}
-
-int RemoveDuplicateIds(ulong &ids[]) {
-    int size = ArraySize(ids);
-    if(size <= 1) return size;
-
-    ulong temp[];
-    ArrayResize(temp, size);
-    int count = 0;
-
-    for(int i = 0; i < size; i++) {
-        bool found = false;
-        for(int j = 0; j < count; j++) {
-            if(temp[j] == ids[i]) {
-                found = true;
-                break;
-            }
-        }
-        if(!found) {
-            temp[count] = ids[i];
-            count++;
-        }
-    }
-
-    ArrayResize(ids, count);
-    for(int i = 0; i < count; i++) {
-        ids[i] = temp[i];
-    }
-
-    return count;
-}
-
-void ProcessHighImpactEvents(const MqlCalendarEvent &events[], const MqlCalendarValue &values[]) {
-    int highImpactCount = 0;
-
-    for(int i = 0; i < ArraySize(events); i++) {
-        if(events[i].importance == CALENDAR_IMPORTANCE_HIGH) {
-            highImpactCount++;
-
-            MqlCalendarValue eventValue;
-            bool foundValue = false;
-
-            for(int j = 0; j < ArraySize(values); j++) {
-                if(values[j].event_id == events[i].id) {
-                    eventValue = values[j];
-                    foundValue = true;
-                    break;
-                }
-            }
-
-            if(foundValue) {
-                ProcessSingleHighImpactEvent(events[i], eventValue);
-            }
-        }
-    }
-
-    if(highImpactCount == 0) {
-        Print("No high impact US news events found for the next 24 hours");
-    } else {
-        Print("Found ", highImpactCount, " high impact US news events");
-    }
-}
-
-void ProcessSingleHighImpactEvent(const MqlCalendarEvent &event, const MqlCalendarValue &value) {
-    string eventTime = TimeToString(value.time, TIME_DATE|TIME_MINUTES);
-    string message = StringFormat("HIGH IMPACT NEWS: %s at %s", event.name, eventTime);
-
-    Print(message);
-    Print("  Event ID: ", event.id);
-    Print("  Sector: ", EnumToString(event.sector));
-    Print("  Frequency: ", EnumToString(event.frequency));
-    Print("  Time until event: ", (value.time - TimeCurrent()) / 60, " minutes");
-
-    // Here you can add your trading logic
-    HandleHighImpactNews(event, value);
-}
-
-void HandleHighImpactNews(const MqlCalendarEvent &event, const MqlCalendarValue &value) {
-    // Calculate time until news event
-    long secondsUntilNews = value.time - TimeCurrent();
-    long minutesUntilNews = secondsUntilNews / 60;
-
-    // Example logic: warn if news is within next 30 minutes
-    if(minutesUntilNews <= 30 && minutesUntilNews > 0) {
-        string warning = StringFormat("WARNING: High impact news '%s' in %d minutes!",
-                                    event.name, minutesUntilNews);
-        Print(warning);
-
-        // Add your specific actions here:
-        // - Close open positions
-        // - Cancel pending orders
-        // - Set trading pause flag
-        // - Send notifications
-    }
-
-    // Example: if news is happening now (within 5 minutes)
-    if(MathAbs(minutesUntilNews) <= 5) {
-        string alert = StringFormat("NEWS ALERT: '%s' is happening NOW!", event.name);
-        Print(alert);
-
-        // Add immediate actions here:
-        // - Pause all trading
-        // - Emergency position management
-    }
-}
 
 //+------------------------------------------------------------------+
+//| Check for high-impact US news in next 24 hours                   |
+//+------------------------------------------------------------------+
+void GetAllNewsByCountry() {
+    string code = "US";
+    MqlCalendarEvent events[];
+    int events_count = CalendarEventByCountry(code, events);
+    if(events_count > 0) {
+        Print("Total US events: " + IntegerToString(events_count));
+        // ArrayPrint(events);
+        for(int i = 0; i < events_count; i++) {
+            if(events[i].importance == 3) {
+                Print("ID: " + IntegerToString(events[i].id) +
+                      " | Type: " + IntegerToString(events[i].type) +
+                      " | Importance: " + IntegerToString(events[i].importance) +
+                      " | Event: " + events[i].event_code);
+            }
+        }
+
+    } else {
+        Print("No US events found.");
+    }
+}
+
+void GetNewsByDUration() {
+    string code = "US";
+    MqlCalendarValue values[];
+    // datetime dateFrom = TimeCurrent();
+    // datetime dateTo = dateFrom + 36 * 3600; // 36 hours ahead
+    datetime dateFrom=D'01.05.2025';
+    datetime dateTo=D'30.05.2025';
+
+    if(CalendarValueHistory(values, dateFrom, dateTo, code)) {
+        // ArrayPrint(values);
+        for(int i = 0; i < ArraySize(values); i++) {
+            string time = TimeToString(values[i].time, TIME_DATE|TIME_MINUTES);
+            MqlCalendarEvent event;
+            ulong eventId = values[i].event_id;
+
+            if(CalendarEventById(eventId, event)) {
+                // check if is CALENDAR_TYPE_HOLIDAY or CALENDAR_IMPORTANCE_HIGH
+                if(event.importance == CALENDAR_IMPORTANCE_HIGH || event.type == CALENDAR_TYPE_HOLIDAY) {
+                    Print("Time: " + time +
+                        " | Event ID: " + IntegerToString(eventId) +
+                        " | Name: " + event.name +
+                        " | Importance: " + EnumToString((ENUM_CALENDAR_EVENT_IMPORTANCE)event.importance) +
+                        " | Type: " + EnumToString((ENUM_CALENDAR_EVENT_TYPE)event.type));
+                }
+            } else {
+                Print("Error retrieving event by ID: " + IntegerToString(GetLastError()));
+            }
+        }
+    } else {
+        Print("Error retrieving news values: " + IntegerToString(GetLastError()));
+    }
+}
+bool isTradingAllowedByNews() {
+    string code = "US";
+    MqlCalendarValue values[];
+    datetime currentTime = TimeCurrent();
+    datetime tomorrow = currentTime + 24 * 3600; // Add 24 hours
+
+    // Check events from now until tomorrow end of day
+    datetime dateTo = tomorrow + 24 * 3600;
+
+    if(CalendarValueHistory(values, currentTime, dateTo, code)) {
+        for(int i = 0; i < ArraySize(values); i++) {
+            MqlCalendarEvent event;
+            ulong eventId = values[i].event_id;
+
+            if(CalendarEventById(eventId, event)) {
+                datetime eventTime = values[i].time;
+
+                // Check for bank holidays today
+                if(event.type == CALENDAR_TYPE_HOLIDAY &&
+                   TimeToString(eventTime, TIME_DATE) == TimeToString(currentTime, TIME_DATE)) {
+                    Print("Trading not allowed: Bank Holiday today");
+                    return false;
+                }
+
+                // Check for NFP tomorrow
+                if(event.name == "Nonfarm Payrolls" &&
+                   TimeToString(eventTime, TIME_DATE) == TimeToString(tomorrow, TIME_DATE)) {
+                    if(currentTime < eventTime) {
+                        Print("Trading not allowed: NFP tomorrow");
+                        return false;
+                    }
+                }
+
+                // Check for CPI today
+                if(StringFind(event.name, "CPI") >= 0 &&
+                   TimeToString(eventTime, TIME_DATE) == TimeToString(currentTime, TIME_DATE)) {
+                    if(currentTime < eventTime) {
+                        Print("Trading not allowed: CPI today");
+                        return false;
+                    }
+                }
+            }
+        }
+    } else {
+        Print("Error retrieving news values: " + IntegerToString(GetLastError()));
+        return false; // If we can't check the news, better not to trade
+    }
+
+    return true; // No blocking news events found
+}
+//+------------------------------------------------------------------+
+2025.05.27 13:45:41.126	CheckNews (NAS100,M5)	Time: 2025.05.02 15:30 | Event ID: 840030016 | Name: Nonfarm Payrolls | Importance: CALENDAR_IMPORTANCE_HIGH | Type: CALENDAR_TYPE_INDICATOR
+2025.05.27 13:45:41.126	CheckNews (NAS100,M5)	Time: 2025.05.13 15:30 | Event ID: 840030006 | Name: Core CPI m/m | Importance: CALENDAR_IMPORTANCE_HIGH | Type: CALENDAR_TYPE_INDICATOR
+
