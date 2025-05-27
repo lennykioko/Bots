@@ -6,7 +6,7 @@
 #property copyright "Copyright 2025, MetaQuotes Software Corp."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
-#property description "Smart Breakout Strategy with Opening Range and FVG confirmation"
+#property description "Smart KeyLevels Strategy with FVG confirmation"
 #property strict
 
 //--- Include necessary helpers
