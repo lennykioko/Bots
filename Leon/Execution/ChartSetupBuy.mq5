@@ -41,7 +41,7 @@ void CreateHorizontalLine(string name, double price, color lineColor, string des
     ObjectSetInteger(ChartID(), name, OBJPROP_STYLE, STYLE_SOLID);
     ObjectSetInteger(ChartID(), name, OBJPROP_WIDTH, 1);
     ObjectSetInteger(ChartID(), name, OBJPROP_SELECTABLE, true);
-    ObjectSetInteger(ChartID(), name, OBJPROP_SELECTED, false);
+    ObjectSetInteger(ChartID(), name, OBJPROP_SELECTED, true);
     ObjectSetInteger(ChartID(), name, OBJPROP_HIDDEN, false);
     ObjectSetInteger(ChartID(), name, OBJPROP_ZORDER, 0);
     ObjectSetString(ChartID(), name, OBJPROP_TEXT, description);
