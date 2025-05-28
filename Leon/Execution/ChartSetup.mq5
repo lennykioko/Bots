@@ -9,6 +9,7 @@
 #property script_show_inputs
 
 // Input parameters for line colors
+input ENUM_ORDER_TYPE TradeDirection = ORDER_TYPE_BUY;  // Trade Direction
 input color EntryLineColor = clrYellow;     // Entry Line Color
 input color StopLossColor = clrRed;         // Stop Loss Line Color
 input color TakeProfitColor = clrGreen;     // Take Profit Line Color
@@ -29,14 +30,21 @@ void OnStart()
     // Create Entry line at current price
     CreateHorizontalLine("ENTRY", currentPrice, EntryLineColor, "Entry Price");
 
-    // Create Stop Loss line 50 points below
-    CreateHorizontalLine("SL", currentPrice - (100 * points), StopLossColor, "Stop Loss");
-
-    // Create Take Profit line 150 points above
-    CreateHorizontalLine("TP", currentPrice + (150 * points), TakeProfitColor, "Take Profit");
-
-    // Create Partial line 100 points above
-    CreateHorizontalLine("PARTIAL", currentPrice + (100 * points), PartialLineColor, "Partial Take Profit");
+    // Position lines based on trade direction
+    if(TradeDirection == ORDER_TYPE_BUY)
+    {
+        // For Buy trades: SL below entry, TP and Partial above
+        CreateHorizontalLine("SL", currentPrice - (100 * points), StopLossColor, "Stop Loss");
+        CreateHorizontalLine("TP", currentPrice + (150 * points), TakeProfitColor, "Take Profit");
+        CreateHorizontalLine("PARTIAL", currentPrice + (100 * points), PartialLineColor, "Partial Take Profit");
+    }
+    else if(TradeDirection == ORDER_TYPE_SELL)
+    {
+        // For Sell trades: SL above entry, TP and Partial below
+        CreateHorizontalLine("SL", currentPrice + (100 * points), StopLossColor, "Stop Loss");
+        CreateHorizontalLine("TP", currentPrice - (150 * points), TakeProfitColor, "Take Profit");
+        CreateHorizontalLine("PARTIAL", currentPrice - (100 * points), PartialLineColor, "Partial Take Profit");
+    }
 
     // Refresh the chart
     ChartRedraw();

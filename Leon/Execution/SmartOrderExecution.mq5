@@ -16,9 +16,6 @@ input ENUM_ORDER_TYPE OrderType = ORDER_TYPE_BUY;  // Order Type
 input double RiskAmount = 100.0;                   // Risk Amount in USD
 input string Comment = "";                         // Trade Comment
 
-// Global variables
-CTrade trade;
-
 //+------------------------------------------------------------------+
 //| Script program start function                                    |
 //+------------------------------------------------------------------+
