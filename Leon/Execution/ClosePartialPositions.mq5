@@ -26,6 +26,16 @@ void OnStart()
         return;
     }
 
+    // Get symbol volume constraints
+    double minVolume = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+    double maxVolume = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+    double volumeStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+
+    if(minVolume == 0 || maxVolume == 0 || volumeStep == 0) {
+        Print("Error getting symbol volume information");
+        return;
+    }
+
     // Iterate through all positions
     for(int i = PositionsTotal() - 1; i >= 0; i--) {
         ulong ticket = PositionGetTicket(i);
@@ -38,24 +48,32 @@ void OnStart()
         // Get position volume
         double positionVolume = PositionGetDouble(POSITION_VOLUME);
 
-        // Calculate volume to close based on ratio
-        double volumeToClose = NormalizeDouble(positionVolume * CloseRatio, 2);
+        // Calculate volume to close based on ratio and round to nearest volume step
+        double rawVolumeToClose = positionVolume * CloseRatio;
+        double volumeToClose = MathRound(rawVolumeToClose / volumeStep) * volumeStep;
+        volumeToClose = NormalizeDouble(volumeToClose, 2);
 
-        // If closing full position or remaining would be too small, close everything
-        if(CloseRatio >= 1.0 || (positionVolume - volumeToClose) < SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN)) {
+        // Calculate remaining volume after close
+        double remainingVolume = positionVolume - volumeToClose;
+
+        // If closing would leave less than minimum volume or ratio is 1, close full position
+        if(CloseRatio >= 1.0 || remainingVolume < minVolume || MathAbs(remainingVolume - minVolume) < volumeStep/2) {
             if(trade.PositionClose(ticket)) {
                 Print("Closed full position ", ticket, " (", positionVolume, " lots)");
             } else {
                 Print("Failed to close position ", ticket, ". Error: ", GetLastError());
             }
         }
-        // Close partial position
-        else if(volumeToClose > 0) {
+        // Close partial position if the volume to close is valid
+        else if(volumeToClose >= minVolume && volumeToClose <= maxVolume) {
             if(trade.PositionClosePartial(ticket, volumeToClose)) {
                 Print("Closed partial position ", ticket, " (", volumeToClose, " of ", positionVolume, " lots)");
             } else {
                 Print("Failed to close partial position ", ticket, ". Error: ", GetLastError());
             }
+        } else {
+            Print("Invalid volume to close for ticket ", ticket, ": ", volumeToClose,
+                  " (Min: ", minVolume, ", Max: ", maxVolume, ", Step: ", volumeStep, ")");
         }
     }
 }
