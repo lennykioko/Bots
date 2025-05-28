@@ -262,10 +262,10 @@ void UpdateDisplayInfo() {
    addTextOnScreen(timeStrMsg, InfoTextColor);
 
    // Show trading session info
-   string tradeHoursAMMsg = "Trading Hours AM: " + IntegerToString(startTradingHourAM) + ":00 - " + IntegerToString(endTradingHourAM) + ":00";
+   string tradeHoursAMMsg = "Trading Hours AM: " + IntegerToString(startTradingHourAM) + ":" + IntegerToString(startTradingMinute) + " - " + IntegerToString(endTradingHourAM) + ":00";
    addTextOnScreen(tradeHoursAMMsg, InfoTextColor);
 
-   string tradeHoursPMMsg = "Trading Hours PM: " + IntegerToString(startTradingHourPM) + ":00 - " + IntegerToString(endTradingHourPM) + ":00";
+   string tradeHoursPMMsg = "Trading Hours PM: " + IntegerToString(startTradingHourPM) + ":" + IntegerToString(startTradingMinute) + " - " + IntegerToString(endTradingHourPM) + ":00";
    addTextOnScreen(tradeHoursPMMsg, InfoTextColor);
 
    // Show account info
