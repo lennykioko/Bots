@@ -49,6 +49,7 @@ struct StrategyState {
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
+   int              dailyStopLosses; // Daily stop losses count
    datetime         lastReset;        // Last reset datetime
    datetime         lastDisplayUpdate;  // Last display update time
    double           startMonthBalance;  // Balance at start of trading month
@@ -60,6 +61,7 @@ struct StrategyState {
       stopLoss = 0.0;
       beRRR = 1.0;
       startDayBalance = 0.0;
+      dailyStopLosses = 0;
       lastReset = 0;
       lastDisplayUpdate = 0;
       startMonthBalance = 0.0;
@@ -95,6 +97,7 @@ double           MinGapSize = 5.0;            // Minimum gap size in pips for FV
 input double     RiskDollars = 100.0;         // Risk in dollars per trade
 input double     MinRRR = 3.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 190;          // Maximum daily loss in account currency
+input int        MaxDailyStopLosses = 2;      // Maximum daily stop losses allowed
 input double     DailyTarget = 190;           // Daily target in account currency
 input double     MonthlyTarget = 600;         // Monthly target in account currency
 input double     MonthlyMaxLoss = 800;        // Monthly maximum loss in account currency
@@ -117,12 +120,13 @@ input color      NegativeCondColor = clrRed;  // Negative condition text color
 int OnInit() {
    // Clear chart objects and set timer
    ObjectsDeleteAll(ChartID(), "");
-   EventSetTimer(5);
+   EventSetTimer(1);
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    state.startMonthBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    state.beRRR = BeRRR;
+   state.dailyStopLosses = 0;
 
    // Initialize display
    if(ShowTextOnChart) {
@@ -164,8 +168,10 @@ void OnTimer() {
    // Reset if it's a new day or if lastReset has never been set
    if(state.lastReset == 0 || lastResetDT.day != dt.day || lastResetDT.mon != dt.mon || lastResetDT.year != dt.year) {
       state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+      state.dailyStopLosses = 0;
       state.lastReset = now;
       Print("New day detected. Starting Day balance reset to: ", DoubleToString(state.startDayBalance, 2));
+      Print("New day detected. Daily stop losses reset to: ", IntegerToString(state.dailyStopLosses));
    }
 
    // Reset month balance if needed
@@ -277,6 +283,10 @@ void UpdateDisplayInfo() {
    string dayPnLMsg = "Day P/L: $" + DoubleToString(dayPnL, 2);
    color pnlColor = (dayPnL >= 0) ? PositiveCondColor : NegativeCondColor;
    addTextOnScreen(dayPnLMsg, pnlColor);
+
+   string dailySLMsg = "Daily SL: " + IntegerToString(state.dailyStopLosses);
+   color dailySLColor = (state.dailyStopLosses < 0) ? PositiveCondColor : NegativeCondColor;
+   addTextOnScreen(dailySLMsg, dailySLColor);
 
    // Show month P/L
    double monthPnL = AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance;
@@ -498,6 +508,8 @@ bool AccountRiskValid() {
    // Check if daily loss is exceeded (negative dayPnL beyond the limit)
    bool lossExceeded = (dayPnL <= -MaxDailyLoss);
 
+   bool dailySLExceeded = (state.dailyStopLosses >= MaxDailyStopLosses);
+
    // Check if daily target is reached (positive dayPnL reaching the target)
    bool targetReached = (dayPnL >= DailyTarget);
 
@@ -510,6 +522,7 @@ bool AccountRiskValid() {
 
    // Debug output
    if(lossExceeded) Print("Daily loss limit exceeded: $", DoubleToString(dayPnL, 2));
+   if(dailySLExceeded) Print("Daily stop losses exceeded: ", IntegerToString(state.dailyStopLosses));
    if(targetReached) Print("Daily profit target reached: $", DoubleToString(dayPnL, 2));
    if(UseMonthlyTarget && monthlyTargetReached) Print("Monthly profit target reached: $", DoubleToString(monthPnL, 2));
    if(monthlyLossExceeded) Print("Monthly loss limit exceeded: $", DoubleToString(monthPnL, 2));
@@ -705,6 +718,8 @@ void ManagePositions() {
          double currentPrice = (posType == POSITION_TYPE_BUY) ?
                                SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                                SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+         double posProfit = PositionGetDouble(POSITION_PROFIT);
+         double stopLoss = PositionGetDouble(POSITION_SL);
 
          // close in profit if candle close below SMA or below swing low and current price is below previous low
          if(posType == POSITION_TYPE_BUY) {
@@ -714,6 +729,11 @@ void ManagePositions() {
                } else {
                   Print("Long position closed successfully. Ticket: ", ticket);
                }
+            }
+
+            if(currentPrice < openPrice && currentPrice <= stopLoss && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.9)) {
+               state.dailyStopLosses++;
+               Print("Recorded daily stop loss. Total: ", state.dailyStopLosses);
             }
          }
 
@@ -725,6 +745,11 @@ void ManagePositions() {
                } else {
                   Print("Long position closed successfully. Ticket: ", ticket);
                }
+            }
+
+            if(currentPrice > openPrice && currentPrice >= stopLoss && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.9)) {
+               state.dailyStopLosses++;
+               Print("Recorded daily stop loss. Total: ", state.dailyStopLosses);
             }
          }
       }
