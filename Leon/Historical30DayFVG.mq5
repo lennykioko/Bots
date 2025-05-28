@@ -42,7 +42,7 @@ input string VisualSettings = "===== Visual Settings ====="; // Visual Settings
 input bool   ShowBullishFVGs = true;             // Show Bullish FVGs
 input bool   ShowBearishFVGs = true;             // Show Bearish FVGs
 input bool   ShowOnlyFirst = true;               // Show only first FVG of each day
-input bool   ShowScreenText = true;              // Show text information on screen
+input bool   ShowScreenText = false;              // Show text information on screen
 input color  BullFVGBaseColor = clrGreenYellow;  // Base color for Bullish FVGs
 input color  BearFVGBaseColor = clrDeepPink;     // Base color for Bearish FVGs
 
