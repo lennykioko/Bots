@@ -207,8 +207,26 @@ void UpdateHistoricalFVGs() {
 
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if(targetDateStruct.day_of_week == 0 || targetDateStruct.day_of_week == 6) {
-         dayOffset++; // Skip to next day
+         dayOffset++;
          continue;
+      }
+
+      // For today, check if we've reached the search time window
+      if(dayOffset == 0) {  // If this is today
+         // Calculate today's search start time
+         MqlDateTime searchTimeStruct = targetDateStruct;
+         searchTimeStruct.hour = (int)StringToInteger(StringSubstr(SearchStartTime, 0, 2));
+         searchTimeStruct.min = (int)StringToInteger(StringSubstr(SearchStartTime, 3, 2));
+         searchTimeStruct.sec = 0;
+         datetime todaySearchStart = StructToTime(searchTimeStruct);
+
+         // If current time is before search window, skip today
+         if(now < todaySearchStart) {
+            Print("Skipping today as current time ", TimeToString(now), " is before search window ",
+                  TimeToString(todaySearchStart));
+            dayOffset++;
+            continue;
+         }
       }
 
       // Set hours/minutes to midnight to get start of day
@@ -366,10 +384,28 @@ void UpdateHistoricalFVGs() {
 //| Get the bar index corresponding to a specific time               |
 //+------------------------------------------------------------------+
 int GetBarIndexFromTime(datetime targetTime) {
+   MqlDateTime targetStruct;
+   TimeToStruct(targetTime, targetStruct);
+
    for(int i = 0; i < 10000; i++) { // Limit search to 10,000 bars
       datetime barTime = iTime(_Symbol, PERIOD_M1, i);
-      if(barTime <= targetTime) {
+      MqlDateTime barStruct;
+      TimeToStruct(barTime, barStruct);
+
+      // Check if we're on the same day and the bar time matches or is just before target time
+      if(barStruct.day == targetStruct.day &&
+         barStruct.mon == targetStruct.mon &&
+         barStruct.year == targetStruct.year &&
+         barTime <= targetTime) {
          return i;
+      }
+
+      // If we've gone past the day we're looking for, stop searching
+      if(barTime < targetTime &&
+         (barStruct.day != targetStruct.day ||
+          barStruct.mon != targetStruct.mon ||
+          barStruct.year != targetStruct.year)) {
+         return -1;
       }
    }
    return -1; // Not found
