@@ -9,7 +9,7 @@
 #property script_show_inputs
 
 #include <Trade/Trade.mqh>
-#include <HelpersMQL5/OrderManagement.mqh>
+#include <Helpers/OrderManagement.mqh>
 
 // Input parameters
 input ENUM_ORDER_TYPE OrderType = ORDER_TYPE_BUY;  // Order Type
@@ -61,7 +61,7 @@ bool CheckRequiredLines()
     string requiredLines[] = {"ENTRY", "SL", "TP"};
 
     for(int i = 0; i < ArraySize(requiredLines); i++) {
-        if(!ObjectFind(ChartID(), requiredLines[i]) >= 0) {
+        if(ObjectFind(ChartID(), requiredLines[i]) < 0) {
             Print("Line not found: ", requiredLines[i]);
             return false;
         }

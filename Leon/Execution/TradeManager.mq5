@@ -8,19 +8,17 @@
 #property version   "1.00"
 
 #include <Trade/Trade.mqh>
-#include <HelpersMQL5/OrderManagement.mqh>
+#include <Helpers/OrderManagement.mqh>
 
 // Input parameters
 input double PartialSize = 0.5;        // Partial Size (0.5 = 50% of position)
 input bool MoveToBreakeven = true;     // Move to Breakeven after Partial
 input int MinimumProfit = 10;          // Minimum Profit in Points before BE
 
-// Global variables
-CTrade trade;
-bool partialTaken = false;
-ulong managedTicket = 0;
-double originalStopLoss = 0.0;
-double entryPrice = 0.0;
+bool g_partialTaken = false;
+ulong g_managedTicket = 0;
+double g_originalStopLoss = 0.0;
+double g_positionEntryPrice = 0.0;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -34,10 +32,10 @@ int OnInit()
     }
 
     // Reset state variables
-    partialTaken = false;
-    managedTicket = 0;
-    originalStopLoss = 0.0;
-    entryPrice = 0.0;
+    g_partialTaken = false;
+    g_managedTicket = 0;
+    g_originalStopLoss = 0.0;
+    g_positionEntryPrice = 0.0;
 
     return(INIT_SUCCEEDED);
 }
@@ -58,10 +56,10 @@ void OnTick()
     // Check if we have any open positions
     if(PositionsTotal() == 0) {
         // Reset state if no positions
-        partialTaken = false;
-        managedTicket = 0;
-        originalStopLoss = 0.0;
-        entryPrice = 0.0;
+        g_partialTaken = false;
+        g_managedTicket = 0;
+        g_originalStopLoss = 0.0;
+        g_positionEntryPrice = 0.0;
         return;
     }
 
@@ -78,14 +76,14 @@ void OnTick()
         if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
 
         // Store position details if we haven't yet
-        if(managedTicket == 0) {
-            managedTicket = ticket;
-            originalStopLoss = PositionGetDouble(POSITION_SL);
-            entryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+        if(g_managedTicket == 0) {
+            g_managedTicket = ticket;
+            g_originalStopLoss = PositionGetDouble(POSITION_SL);
+            g_positionEntryPrice = PositionGetDouble(POSITION_PRICE_OPEN);
         }
 
         // Skip if this isn't our managed position
-        if(ticket != managedTicket) continue;
+        if(ticket != g_managedTicket) continue;
 
         ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
         double currentPrice = PositionGetDouble(POSITION_PRICE_CURRENT);
@@ -100,12 +98,12 @@ void OnTick()
         }
 
         // Take partial profit if target reached and not taken yet
-        if(partialTargetReached && !partialTaken) {
+        if(partialTargetReached && !g_partialTaken) {
             double volumeToClose = NormalizeDouble(positionVolume * PartialSize, 2);
 
             if(trade.PositionClosePartial(ticket, volumeToClose)) {
                 Print("Partial profit taken: ", volumeToClose, " lots");
-                partialTaken = true;
+                g_partialTaken = true;
 
                 // Move stop loss to breakeven if enabled
                 if(MoveToBreakeven) {
@@ -114,14 +112,14 @@ void OnTick()
                     bool canMoveToBreakeven = false;
 
                     if(posType == POSITION_TYPE_BUY) {
-                        canMoveToBreakeven = (currentPrice - entryPrice) >= minMove;
+                        canMoveToBreakeven = (currentPrice - g_positionEntryPrice) >= minMove;
                     } else {
-                        canMoveToBreakeven = (entryPrice - currentPrice) >= minMove;
+                        canMoveToBreakeven = (g_positionEntryPrice - currentPrice) >= minMove;
                     }
 
                     if(canMoveToBreakeven) {
                         double tp = PositionGetDouble(POSITION_TP);
-                        if(trade.PositionModify(ticket, entryPrice, tp)) {
+                        if(trade.PositionModify(ticket, g_positionEntryPrice, tp)) {
                             Print("Stop loss moved to breakeven");
                         }
                     }
