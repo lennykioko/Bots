@@ -76,9 +76,10 @@ input string     AsianStartTime = "01:00";       // 1800 NY = 0100 KE no DST (HH
 input string     AsianEndTime = "07:00";         // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonStartTime = "07:00";      // 0000 NY = 0700 KE no DST (HH:MM)
 input string     LondonEndTime = "13:00";        // 0600 NY = 1300 KE no DST (HH:MM)
-input int        startTradingHourAM = 17;          // 1000 NY = 1700 KE no DST (24H)
+input int        startTradingMinute = 30;          // Start minute for trading
+input int        startTradingHourAM = 16;          // 0900 NY = 1600 KE no DST (24H)
 input int        endTradingHourAM = 18;            // 1100 NY = 1800 KE no DST (24H)
-input int        startTradingHourPM = 21;          // 1400 NY = 2100 KE no DST (24H)
+input int        startTradingHourPM = 20;          // 1300 NY = 2000 KE no DST (24H)
 input int        endTradingHourPM = 22;            // 1500 NY = 2200 KE no DST (24H)
 
 // Market structure parameters
@@ -467,11 +468,19 @@ bool IsNYHour() {
    MqlDateTime dt;
    TimeToStruct(now, dt);
 
-   if(dt.hour >= startTradingHourAM && dt.hour < endTradingHourAM) {
+   if(dt.hour == startTradingHourAM && dt.min >= startTradingMinute) {
       return true;
    }
 
-   if(dt.hour >= startTradingHourPM && dt.hour < endTradingHourPM) {
+   if(dt.hour > startTradingHourAM && dt.hour < endTradingHourAM) {
+      return true;
+   }
+
+   if(dt.hour == startTradingHourPM && dt.min >= startTradingMinute) {
+      return true;
+   }
+
+   if(dt.hour > startTradingHourPM && dt.hour < endTradingHourPM) {
       return true;
    }
 
