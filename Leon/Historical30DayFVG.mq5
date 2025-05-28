@@ -42,6 +42,7 @@ input string VisualSettings = "===== Visual Settings ====="; // Visual Settings
 input bool   ShowBullishFVGs = true;             // Show Bullish FVGs
 input bool   ShowBearishFVGs = true;             // Show Bearish FVGs
 input bool   ShowOnlyFirst = true;               // Show only first FVG of each day
+input bool   ShowScreenText = true;              // Show text information on screen
 input color  BullFVGBaseColor = clrGreenYellow;  // Base color for Bullish FVGs
 input color  BearFVGBaseColor = clrDeepPink;     // Base color for Bearish FVGs
 
@@ -367,17 +368,18 @@ void UpdateHistoricalFVGs() {
    DrawFVGLines();
 
    // Update display information
-   addTextOnScreen("Processed " + IntegerToString(daysProcessed) + " trading days (skipped weekends)", clrGold);
+   if(ShowScreenText) {
+      addTextOnScreen("Processed " + IntegerToString(daysProcessed) + " trading days (skipped weekends)", clrGold);
+      addTextOnScreen("Checked " + IntegerToString(totalDaysChecked) + " calendar days", clrSilver);
+      addTextOnScreen("Found data for " + IntegerToString(daysProcessed) + " trading days", clrSilver);
+      addTextOnScreen("No data for " + IntegerToString(daysWithNoData) + " days", clrSilver);
+      addTextOnScreen("No FVGs in " + IntegerToString(daysWithNoFVGs) + " days with data", clrSilver);
+   }
 
    // Add detailed debug info to display and log
    Print("SUMMARY: Processed ", totalDaysChecked, " calendar days, found ", daysProcessed, " trading days, ",
          daysWithNoData, " days had no bar data, ",
          daysWithNoFVGs, " days had no FVGs in the time window");
-
-   addTextOnScreen("Checked " + IntegerToString(totalDaysChecked) + " calendar days", clrSilver);
-   addTextOnScreen("Found data for " + IntegerToString(daysProcessed) + " trading days", clrSilver);
-   addTextOnScreen("No data for " + IntegerToString(daysWithNoData) + " days", clrSilver);
-   addTextOnScreen("No FVGs in " + IntegerToString(daysWithNoFVGs) + " days with data", clrSilver);
 }
 
 //+------------------------------------------------------------------+
@@ -537,6 +539,8 @@ void DeleteAllFVGLines() {
 //| Display status information                                       |
 //+------------------------------------------------------------------+
 void DisplayStatus() {
+   if(!ShowScreenText) return;  // Exit early if screen text is disabled
+
    addTextOnScreen("FVG EA - Displaying first FVGs past 16:30 for last " + IntegerToString(DaysToDisplay) + " days", clrWhite);
    addTextOnScreen("Search window: " + SearchStartTime + " to " + SearchEndTime + " (based on M1 timeframe)", clrWhite);
    addTextOnScreen("Current Timeframe: " + EnumToString((ENUM_TIMEFRAMES)Period()), clrWhite);
