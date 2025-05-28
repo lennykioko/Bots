@@ -20,9 +20,8 @@ void OnStart()
     {
         // Get object name
         string objectName = ObjectName(ChartID(), i);
-
-        // Convert to lowercase for case-insensitive comparison
-        string lowerName = StringLower(objectName);
+        string lowerName = objectName;
+        StringToLower(lowerName);  // Convert to lowercase for case-insensitive comparison
 
         // Skip objects with "partial" in their name
         if(StringFind(lowerName, "partial") >= 0)
