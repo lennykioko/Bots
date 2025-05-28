@@ -731,7 +731,7 @@ void ManagePositions() {
                }
             }
 
-            if(currentPrice < openPrice && currentPrice <= stopLoss && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.9)) {
+            if(currentPrice < openPrice && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.95)) {
                state.dailyStopLosses++;
                Print("Recorded daily stop loss. Total: ", state.dailyStopLosses);
             }
@@ -747,7 +747,7 @@ void ManagePositions() {
                }
             }
 
-            if(currentPrice > openPrice && currentPrice >= stopLoss && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.9)) {
+            if(currentPrice > openPrice && posProfit < 0 && MathAbs(posProfit) >= (RiskDollars * 0.95)) {
                state.dailyStopLosses++;
                Print("Recorded daily stop loss. Total: ", state.dailyStopLosses);
             }
