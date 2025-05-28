@@ -99,7 +99,7 @@ input double     MinRRR = 3.0;                // Minimum risk to reward ratio
 input double     MaxDailyLoss = 190;          // Maximum daily loss in account currency
 input int        MaxDailyStopLosses = 2;      // Maximum daily stop losses allowed
 input double     DailyTarget = 190;           // Daily target in account currency
-input double     MonthlyTarget = 600;         // Monthly target in account currency
+input double     MonthlyTarget = 800;         // Monthly target in account currency
 input double     MonthlyMaxLoss = 800;        // Monthly maximum loss in account currency
 input bool       UseMonthlyTarget = true;     // Use Monthly target
 
