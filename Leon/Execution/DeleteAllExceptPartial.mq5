@@ -24,8 +24,9 @@ void OnStart()
         // Convert to lowercase for case-insensitive comparison
         string lowerName = StringToLower(objectName);
 
-        // Skip objects with "partial" in their name
-        if(StringFind(lowerName, "partial") >= 0)
+        // Skip objects with "partial" in their name (StringFind returns -1 if not found)
+        int findResult = StringFind(lowerName, "partial");
+        if(findResult != -1)
             continue;
 
         // Delete other objects
