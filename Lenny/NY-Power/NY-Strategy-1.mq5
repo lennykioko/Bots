@@ -742,7 +742,7 @@ void ManagePositions() {
                   Print("Long position closed successfully. Ticket: ", ticket);
                   message = "Long position closed successfully." +
                            " Symbol: " + _Symbol +
-                           " Ticket: " + ticket +
+                           " Ticket: " + DoubleToString(ticket) +
                            " Entry: " + DoubleToString(openPrice, _Digits) +
                            " Current: " + DoubleToString(currentPrice, _Digits) +
                            " Profit: " + DoubleToString(positionProfit, 2) +
@@ -762,7 +762,7 @@ void ManagePositions() {
                   Print("Short position closed successfully. Ticket: ", ticket);
                   message = "Short position closed successfully." +
                            " Symbol: " + _Symbol +
-                           " Ticket: " + ticket +
+                           " Ticket: " + DoubleToString(ticket) +
                            " Entry: " + DoubleToString(openPrice, _Digits) +
                            " Current: " + DoubleToString(currentPrice, _Digits) +
                            " Profit: " + DoubleToString(positionProfit, 2) +
