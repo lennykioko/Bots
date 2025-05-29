@@ -196,7 +196,9 @@ void OnTimer() {
 
       // manage positions regardless of trading conditions
       if(HasActivePositionsOrOrders()) {
+         UpdateMarketStructure();
          ManagePositions();
+         UpdateDisplayInfo();
       }
 
       return;
