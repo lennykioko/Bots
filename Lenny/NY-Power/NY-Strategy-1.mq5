@@ -117,7 +117,7 @@ input bool       EnableTelegramAlerts = true; // Send alerts to Telegram
 input string     chatId = "";               // Telegram chat ID for alerts
 input string     botToken = "";            // Telegram bot token for alerts
 
-string message = ""; // Message text for Telegram alerts
+string messageText = ""; // Message text for Telegram alerts
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -662,7 +662,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
             Print("Failed to place buy order. Error: ", GetLastError());
          } else {
             Print("Buy order placed successfully.");
-            message = "Buy order placed successfully." +
+            messageText = "Buy order placed successfully." +
                      " Symbol: " + _Symbol +
                      " Lot Size: " + DoubleToString(lotSize, 2) +
                      " Entry: " + DoubleToString(entryPrice, _Digits) +
@@ -670,7 +670,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
                      " TP: " + DoubleToString(takeProfit, _Digits) +
                      " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
                      " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-            SendTelegramAlert(botToken, chatId, message, EnableTelegramAlerts);
+            SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
          }
          break;
 
@@ -694,7 +694,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
             Print("Failed to place sell order. Error: ", GetLastError());
          } else {
             Print("Sell order placed successfully.");
-            message = "Sell order placed successfully." +
+            messageText = "Sell order placed successfully." +
                      " Symbol: " + _Symbol +
                      " Lot Size: " + DoubleToString(lotSize, 2) +
                      " Entry: " + DoubleToString(entryPrice, _Digits) +
@@ -702,7 +702,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
                      " TP: " + DoubleToString(takeProfit, _Digits) +
                      " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
                      " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-            SendTelegramAlert(botToken, chatId, message, EnableTelegramAlerts);
+            SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
          }
          break;
 
@@ -740,7 +740,7 @@ void ManagePositions() {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
                   Print("Long position closed successfully. Ticket: ", ticket);
-                  message = "Long position closed successfully." +
+                  messageText = "Long position closed successfully." +
                            " Symbol: " + _Symbol +
                            " Ticket: " + DoubleToString(ticket) +
                            " Entry: " + DoubleToString(openPrice, _Digits) +
@@ -748,7 +748,7 @@ void ManagePositions() {
                            " Profit: " + DoubleToString(positionProfit, 2) +
                            " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
                            " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-                  SendTelegramAlert(botToken, chatId, message, EnableTelegramAlerts);
+                  SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
                }
             }
          }
@@ -760,7 +760,7 @@ void ManagePositions() {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
                   Print("Short position closed successfully. Ticket: ", ticket);
-                  message = "Short position closed successfully." +
+                  messageText = "Short position closed successfully." +
                            " Symbol: " + _Symbol +
                            " Ticket: " + DoubleToString(ticket) +
                            " Entry: " + DoubleToString(openPrice, _Digits) +
@@ -768,7 +768,7 @@ void ManagePositions() {
                            " Profit: " + DoubleToString(positionProfit, 2) +
                            " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
                            " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-                  SendTelegramAlert(botToken, chatId, message, EnableTelegramAlerts);
+                  SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
                }
             }
          }
