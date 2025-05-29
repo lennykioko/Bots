@@ -193,6 +193,12 @@ void OnTimer() {
 
    if(!IsNYHour() || !AccountRiskValid() || !IsTradingAllowedByNews()) {
       // If not in NY hour or not risk valid or news trading not allowed, do not execute trading logic
+
+      // manage positions regardless of trading conditions
+      if(HasActivePositionsOrOrders()) {
+         ManagePositions();
+      }
+
       return;
    }
 
