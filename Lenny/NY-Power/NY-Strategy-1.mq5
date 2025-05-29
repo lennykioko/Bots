@@ -6,7 +6,7 @@
 #property copyright "Copyright 2025, MetaQuotes Software Corp."
 #property link      "https://www.mql5.com"
 #property version   "1.00"
-#property description "Smart KeyLevels Strategy with FVG confirmation"
+#property description "Smart KeyLevels Strategy with FVG and SMA confirmation"
 #property strict
 
 //--- Include necessary helpers
@@ -125,7 +125,7 @@ string messageText = ""; // Message text for Telegram alerts
 int OnInit() {
    // Clear chart objects and set timer
    ObjectsDeleteAll(ChartID(), "");
-   EventSetTimer(5);
+   EventSetTimer(2);
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
