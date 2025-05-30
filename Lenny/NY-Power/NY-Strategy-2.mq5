@@ -707,7 +707,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
    }
 
    double entryPrice, stopLoss, takeProfit, lotSize;
-   double highestSwingLow, lowestFVGCandleLow, lowestSwingHigh, highestFVGCandleHigh;
+   double lowestFVGCandleLow, highestFVGCandleHigh;
 
    switch(signal) {
       case LONG:
@@ -857,7 +857,7 @@ void ManagePositions() {
          // trade status management
          if(state.tradeStatus == ACTIVE) {
             if(posType == POSITION_TYPE_BUY) {
-               if(state.stopLoss >= state.openPrice) {
+               if(state.stopLoss >= state.entryPrice) {
                   state.tradeStatus = BREAKEVEN;
                   Print("Trade moved to breakeven for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
@@ -877,8 +877,8 @@ void ManagePositions() {
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-            } else if(postype == POSITION_TYPE_SELL) {
-               if(state.stopLoss <= state.openPrice) {
+            } else if(posType == POSITION_TYPE_SELL) {
+               if(state.stopLoss <= state.entryPrice) {
                   state.tradeStatus = BREAKEVEN;
                   Print("Trade moved to breakeven for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
