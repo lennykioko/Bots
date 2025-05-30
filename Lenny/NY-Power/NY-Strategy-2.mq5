@@ -52,9 +52,6 @@ struct StrategyState {
    double           prevWeekLow;     // Previous week low
 
    // Position management
-   double           entryPrice;       // Entry price for position
-   double           stopLoss;         // Stop loss price
-   double           takeProfit;       // Take profit price
    double           beRRR;           // Breakeven risk to reward ratio
    TRADE_STATUS     tradeStatus;     // Current trade status
 
@@ -67,9 +64,6 @@ struct StrategyState {
 
    // Constructor with default values
    void StrategyState() {
-      entryPrice = 0.0;
-      stopLoss = 0.0;
-      takeProfit = 0.0;
       beRRR = 1.0;
       tradeStatus = NONE;
       startDayBalance = 0.0;
@@ -720,11 +714,6 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
 
-         // Store entry price for position management
-         state.entryPrice = entryPrice;
-         state.stopLoss = stopLoss;
-         state.takeProfit = takeProfit;
-
          // Execute buy order
          if(!trade.Buy(lotSize, _Symbol, 0, stopLoss, takeProfit, "NY-BUY")) {
             Print("Failed to place buy order. Error: ", GetLastError());
@@ -752,11 +741,6 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
          stopLoss = highestFVGCandleHigh + (BufferPips * GetPipValue());
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
-
-         // Store entry price for position management
-         state.entryPrice = entryPrice;
-         state.stopLoss = stopLoss;
-         state.takeProfit = takeProfit;
 
          // Execute sell order
          if(!trade.Sell(lotSize, _Symbol, 0, stopLoss, takeProfit, "NY-SELL")) {
@@ -795,6 +779,9 @@ void ManagePositions() {
       if(ticket != 0 && PositionGetString(POSITION_SYMBOL) == _Symbol) {
          ENUM_POSITION_TYPE posType = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
          double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+         double slPrice = PositionGetDouble(POSITION_SL);
+         double tpPrice = PositionGetDouble(POSITION_TP);
+
          double prevOpen = iOpen(_Symbol, PERIOD_CURRENT, 1);
          double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
          double prevHigh = iHigh(_Symbol, PERIOD_CURRENT, 1);
@@ -857,41 +844,43 @@ void ManagePositions() {
          // trade status management
          if(state.tradeStatus == ACTIVE) {
             if(posType == POSITION_TYPE_BUY) {
-               if(state.stopLoss >= state.entryPrice) {
+               if(slPrice >= openPrice) {
                   state.tradeStatus = BREAKEVEN;
                   Print("Trade moved to breakeven for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                }
 
-               if(currentPrice < state.stopLoss) {
+               if(currentPrice < slPrice) {
                   state.tradeStatus = STOPLOSS;
                   Print("Stop loss hit for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Stop loss hit for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-               if(currentPrice > state.takeProfit) {
+               if(currentPrice > tpPrice) {
                   state.tradeStatus = TAKEPROFIT;
                   Print("Take profit hit for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Take profit hit for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-            } else if(posType == POSITION_TYPE_SELL) {
-               if(state.stopLoss <= state.entryPrice) {
+            }
+
+            if(posType == POSITION_TYPE_SELL) {
+               if(slPrice <= openPrice) {
                   state.tradeStatus = BREAKEVEN;
                   Print("Trade moved to breakeven for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                }
 
-               if(currentPrice > state.stopLoss) {
+               if(currentPrice > slPrice) {
                   state.tradeStatus = STOPLOSS;
                   Print("Stop loss hit for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Stop loss hit for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-               if(currentPrice < state.takeProfit) {
+               if(currentPrice < tpPrice) {
                   state.tradeStatus = TAKEPROFIT;
                   Print("Take profit hit for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Take profit hit for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
