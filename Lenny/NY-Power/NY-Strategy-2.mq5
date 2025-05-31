@@ -55,6 +55,7 @@ struct StrategyState {
    double           beRRR;           // Breakeven risk to reward ratio
    TRADE_STATUS     tradeStatus;     // Current trade status
    int              FVGindexUsed;    // Index of FVG used for entry
+   double           partailPercent; // Partial close percentage
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
@@ -66,6 +67,7 @@ struct StrategyState {
    // Constructor with default values
    void StrategyState() {
       beRRR = 1.0;
+      partailPercent = 0.5;
       tradeStatus = NONE;
       FVGindexUsed = 0;
       startDayBalance = 0.0;
@@ -800,6 +802,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 void ManagePositions() {
    if(UseBreakeven) {
       MoveSymbolStopLossToBreakeven(state.beRRR);
+      TakePartialProfit(state.beRRR, state.partailPercent);
    }
 
    for(int i = 0; i < PositionsTotal(); i++) {
