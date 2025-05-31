@@ -801,8 +801,8 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 //+------------------------------------------------------------------+
 void ManagePositions() {
    if(UseBreakeven) {
+      TakePartialProfit(state.beRRR, state.partailPercent); // should be called before MoveSymbolStopLossToBreakeven
       MoveSymbolStopLossToBreakeven(state.beRRR);
-      TakePartialProfit(state.beRRR, state.partailPercent);
    }
 
    for(int i = 0; i < PositionsTotal(); i++) {
