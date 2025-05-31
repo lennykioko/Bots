@@ -23,9 +23,9 @@ void OnStart()
     CreateHorizontalLine("ENTRY", currentPrice, clrYellow, "Entry Price");
 
     // For Buy trades: SL below entry, TP and Partial above
-    CreateHorizontalLine("SL", currentPrice - (100 * points), clrRed, "Stop Loss");
-    CreateHorizontalLine("TP", currentPrice + (150 * points), clrGreen, "Take Profit");
-    CreateHorizontalLine("PARTIAL", currentPrice + (100 * points), clrBlue, "Partial Take Profit");
+    CreateHorizontalLine("SL", currentPrice - (200 * points), clrRed, "Stop Loss");
+    CreateHorizontalLine("TP", currentPrice + (1000 * points), clrGreen, "Take Profit");
+    CreateHorizontalLine("PARTIAL", currentPrice + (600 * points), clrBlue, "Partial Take Profit");
 
     // Refresh the chart
     ChartRedraw();

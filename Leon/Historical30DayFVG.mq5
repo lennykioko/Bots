@@ -188,8 +188,6 @@ void UpdateHistoricalFVGs() {
    // Update last update time
    g_LastUpdateTime = now;
 
-   // We don't delete existing FVG lines to keep them persistent
-
    // Process each day, starting from today and going back
    int daysProcessed = 0;
    int dayOffset = 0;
@@ -225,6 +223,14 @@ void UpdateHistoricalFVGs() {
          if(now < todaySearchStart) {
             Print("Skipping today as current time ", TimeToString(now), " is before search window ",
                   TimeToString(todaySearchStart));
+            dayOffset++;
+            continue;
+         }
+
+         // NEW: For today, ensure we have at least 3 closed candles after search start time
+         datetime currentBarTime = iTime(_Symbol, PERIOD_M1, 0);
+         if(currentBarTime < todaySearchStart + 180) { // 180 seconds = 3 minutes
+            Print("Skipping today as we don't have enough closed candles after search start time");
             dayOffset++;
             continue;
          }
@@ -266,11 +272,17 @@ void UpdateHistoricalFVGs() {
       targetDateStruct.sec = 59;
       datetime searchEnd = StructToTime(targetDateStruct);
 
-      // Find the bar indices corresponding to the search times
-      int startBar = GetBarIndexFromTime(searchStart);
-      int endBar = GetBarIndexFromTime(searchEnd);
+      // NEW: For today, adjust searchEnd to not include unclosed candles
+      if(dayOffset == 0) {
+         datetime currentBarTime = iTime(_Symbol, PERIOD_M1, 0);
+         searchEnd = MathMin(searchEnd, currentBarTime - 120); // Ensure we have 2 closed candles
+      }
 
-      if(startBar < 0 || endBar < 0) {
+      // Find the bar indices corresponding to the search times
+      int startBarIndex = GetBarIndexFromTime(searchStart);  // 16:30 time (higher index, older)
+      int endBarIndex = GetBarIndexFromTime(searchEnd);      // 17:00 time (lower index, newer)
+
+      if(startBarIndex < 0 || endBarIndex < 0) {
          // Skip days where we can't find the bars
          daysWithNoData++;
          dayOffset++;
@@ -285,8 +297,24 @@ void UpdateHistoricalFVGs() {
 
          Print("SKIPPING Day: ", debugDateStr, " - Cannot find bars for time window ",
                TimeToString(searchStart), " to ", TimeToString(searchEnd),
-               " (StartBar=", startBar, ", EndBar=", endBar, ")");
+               " (StartBarIndex=", startBarIndex, ", EndBarIndex=", endBarIndex, ")");
          continue;
+      }
+
+      // IMPORTANT: In MT5, bar index 0 is newest, higher indices are older
+      // So for FVG functions: startBar should be newer time (lower index), endBar should be older time (higher index)
+      int startBar = endBarIndex;    // 17:00 time (newer, lower index)
+      int endBar = startBarIndex;    // 16:30 time (older, higher index)
+
+      // Verify the time range is correct
+      datetime startBarTime = iTime(_Symbol, PERIOD_M1, startBar);
+      datetime endBarTime = iTime(_Symbol, PERIOD_M1, endBar);
+
+      // Add validation to ensure we're searching in the correct time range
+      if(startBarTime < searchStart || endBarTime > searchEnd) {
+         Print("WARNING: Time range mismatch for ", debugDateStr,
+               " - Expected: ", TimeToString(searchStart), " to ", TimeToString(searchEnd),
+               " - Got: ", TimeToString(endBarTime), " to ", TimeToString(startBarTime));
       }
 
       // Initialize FVG struct for this day
@@ -357,11 +385,19 @@ void UpdateHistoricalFVGs() {
                           IntegerToString(debugDateStruct.mon) + "-" +
                           IntegerToString(debugDateStruct.day);
 
+      // Add the first FVG time to debug output if it exists
+      string fvgTimeStr = "";
+      if(g_HistoricalFVGs[daysProcessed-1].exists && g_HistoricalFVGs[daysProcessed-1].firstFVG.exists) {
+         fvgTimeStr = " FVG_Time=" + TimeToString(g_HistoricalFVGs[daysProcessed-1].firstFVG.time);
+      }
+
       Print("Day #", daysProcessed, " (", debugDateStr, "): ",
-           "StartBar=", startBar, " EndBar=", endBar,
+           "SearchRange=", TimeToString(searchStart), " to ", TimeToString(searchEnd),
+           " StartBar=", startBar, "(", TimeToString(startBarTime), ")",
+           " EndBar=", endBar, "(", TimeToString(endBarTime), ")",
            " BullFVGs=", ArraySize(bullishFVGs),
            " BearFVGs=", ArraySize(bearishFVGs),
-           " Result=", dayType);
+           " Result=", dayType, fvgTimeStr);
    }
 
    // Draw the FVG lines
