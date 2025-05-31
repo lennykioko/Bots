@@ -54,7 +54,7 @@ struct StrategyState {
    // Position management
    double           beRRR;           // Breakeven risk to reward ratio
    TRADE_STATUS     tradeStatus;     // Current trade status
-   double           FVGindexUsed;    // Index of FVG used for entry
+   int              FVGindexUsed;    // Index of FVG used for entry
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
