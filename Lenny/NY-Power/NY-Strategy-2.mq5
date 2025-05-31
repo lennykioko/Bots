@@ -793,12 +793,13 @@ void ManagePositions() {
 
          // close if candle closes below the two prev swing lows and opens and closes below SMA and is below prev candle low
          // buy checks
-         double closeBelowPrevSwingLows = prevClose < state.swingLows[0].price && prevClose < state.swingLows[1].price;
+         double closeBelowPrevSwingLows = prevClose < state.swingLows[0].price || prevClose < state.swingLows[1].price;
+         double closedBelowPrevSwingHighs = prevClose < state.swingHighs[0].price || prevClose < state.swingHighs[1].price;
          double opencloseBelowSMA = !CheckIsAboveSMA(prevClose, SMA_Period) && !CheckIsAboveSMA(prevOpen, SMA_Period);
          double currentBelowPrevLow = currentPrice < prevLow;
 
          if(posType == POSITION_TYPE_BUY) {
-            if(closeBelowPrevSwingLows && opencloseBelowSMA && currentBelowPrevLow) {
+            if(closeBelowPrevSwingLows && closedBelowPrevSwingHighs && opencloseBelowSMA && currentBelowPrevLow) {
                if(!trade.PositionClose(ticket)) {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
@@ -818,12 +819,13 @@ void ManagePositions() {
 
          // close if candle closes above the two prev swing highs and opens and closes above SMA and is above prev candle high
          // sell checks
-         double closeAbovePrevSwingHighs = prevClose > state.swingHighs[0].price && prevClose > state.swingHighs[1].price;
+         double closeAbovePrevSwingHighs = prevClose > state.swingHighs[0].price || prevClose > state.swingHighs[1].price;
+         double closedAbovePrevSwingLows = prevClose > state.swingLows[0].price || prevClose > state.swingLows[1].price;
          double opencloseAboveSMA = CheckIsAboveSMA(prevClose, SMA_Period) && CheckIsAboveSMA(prevOpen, SMA_Period);
          double currentAbovePrevHigh = currentPrice > prevHigh;
 
          if(posType == POSITION_TYPE_SELL) {
-            if(closeAbovePrevSwingHighs && opencloseAboveSMA && currentAbovePrevHigh) {
+            if(closeAbovePrevSwingHighs && closedAbovePrevSwingLows && opencloseAboveSMA && currentAbovePrevHigh) {
                if(!trade.PositionClose(ticket)) {
                   Print("Failed to close long position. Error: ", GetLastError());
                } else {
