@@ -54,6 +54,7 @@ struct StrategyState {
    // Position management
    double           beRRR;           // Breakeven risk to reward ratio
    TRADE_STATUS     tradeStatus;     // Current trade status
+   double           FVGindexUsed;    // Index of FVG used for entry
 
    // Session management
    double           startDayBalance;  // Balance at start of trading day
@@ -66,6 +67,7 @@ struct StrategyState {
    void StrategyState() {
       beRRR = 1.0;
       tradeStatus = NONE;
+      FVGindexUsed = 0;
       startDayBalance = 0.0;
       lastReset = 0;
       lastDisplayUpdate = 0;
@@ -635,20 +637,28 @@ int FilterFVG(FVG &fvgs[], int idx = 0) {
 //+------------------------------------------------------------------+
 TRADE_DIRECTION CheckForEntrySignals() {
    double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
+   double prevHigh = iHigh(_Symbol, PERIOD_CURRENT, 1);
+   double prevLow = iLow(_Symbol, PERIOD_CURRENT, 1);
 
    // buy checks
    bool closeAboveSMA = CheckIsAboveSMA(prevClose, SMA_Period);
    bool closeAbovePrevSwingHigh = prevClose > state.swingHighs[0].price || prevClose > state.swingHighs[1].price;
    bool closeAboveBearishFVGs = ArraySize(state.bearishFVGs) <= 0 || (ArraySize(state.bearishFVGs) > 0 && prevClose > state.bearishFVGs[0].low) || (ArraySize(state.bearishFVGs) >= 2 && prevClose > state.bearishFVGs[1].low);
    bool prevBearishFVGsFilled = ArraySize(state.bearishFVGs) <= 0 || (ArraySize(state.bearishFVGs) > 0 && state.bearishFVGs[0].isFilled) || (ArraySize(state.bearishFVGs) >= 2 && state.bearishFVGs[1].isFilled);
-   bool formedBullishFVG = (ArraySize(state.bullishFVGs) >= 1 && FilterFVG(state.bullishFVGs, 0)) || (ArraySize(state.bullishFVGs) >= 2 && FilterFVG(state.bullishFVGs, 1));
+   bool formedBullishFVG0 = (ArraySize(state.bullishFVGs) >= 1 && FilterFVG(state.bullishFVGs, 0));
+   bool formedBullishFVG1 = (ArraySize(state.bullishFVGs) >= 2 && FilterFVG(state.bullishFVGs, 1));
+   bool bouncingOnBullishFVG0 = ArraySize(state.bullishFVGs) >= 1 && prevLow > state.bullishFVGs[0].low && prevLow < state.bullishFVGs[0].high && prevClose > state.bullishFVGs[0].high && prevClose > prevLow;
+   bool bouncingOnBullishFVG1 = ArraySize(state.bullishFVGs) >= 2 && prevLow > state.bullishFVGs[1].low && prevLow < state.bullishFVGs[1].high && prevClose > state.bullishFVGs[1].high && prevClose > prevLow;
 
    // sell checks
    bool closeBelowSMA = !CheckIsAboveSMA(prevClose, SMA_Period);
    bool closeBelowPrevSwingLow = prevClose < state.swingLows[0].price || prevClose < state.swingLows[1].price;
    bool closeBelowBullishFVGs = ArraySize(state.bullishFVGs) <= 0 || (ArraySize(state.bullishFVGs) > 0 && prevClose < state.bullishFVGs[0].low) || (ArraySize(state.bullishFVGs) >= 2 && prevClose < state.bullishFVGs[1].low);
    bool prevBullishFVGsFilled = ArraySize(state.bullishFVGs) <= 0 || (ArraySize(state.bullishFVGs) > 0 && state.bullishFVGs[0].isFilled) || (ArraySize(state.bullishFVGs) >= 2 && state.bullishFVGs[1].isFilled);
-   bool formedBearishFVG = (ArraySize(state.bearishFVGs) >= 1 && FilterFVG(state.bearishFVGs, 0)) || (ArraySize(state.bearishFVGs) >= 2 && FilterFVG(state.bearishFVGs, 1));
+   bool formedBearishFVG0 = (ArraySize(state.bearishFVGs) >= 1 && FilterFVG(state.bearishFVGs, 0));
+   bool formedBearishFVG1 = (ArraySize(state.bearishFVGs) >= 2 && FilterFVG(state.bearishFVGs, 1));
+   bool bouncingOnBearishFVG0 = ArraySize(state.bearishFVGs) >= 1 && prevHigh < state.bearishFVGs[0].low && prevHigh > state.bearishFVGs[0].high && prevClose < state.bearishFVGs[0].high && prevClose < prevHigh;
+   bool bouncingOnBearishFVG1 = ArraySize(state.bearishFVGs) >= 2 && prevHigh < state.bearishFVGs[1].low && prevHigh > state.bearishFVGs[1].high && prevClose < state.bearishFVGs[1].high && prevClose < prevHigh;
 
    // LONG signal
    if(ArraySize(state.swingLows) > 0 && ArraySize(state.bullishFVGs) > 0) {
@@ -656,8 +666,17 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found swing lows rejecting key level");
          if(closeAbovePrevSwingHigh || closeAboveBearishFVGs || prevBearishFVGsFilled) {
             Print("Price is above a swing high or bearish FVG");
-            if(formedBullishFVG) {
-               Print("Found at least 1 valid bullish FVG");
+
+            if(formedBullishFVG0 && bouncingOnBullishFVG0) {
+               state.FVGindexUsed = 0;
+               Print("Found valid bullish FVG i = 0");
+               if(closeAboveSMA) {
+                  Print("Price is above SMA" + IntegerToString(SMA_Period));
+                  return LONG;
+               }
+            } else if(formedBullishFVG1 && bouncingOnBullishFVG1) {
+               state.FVGindexUsed = 1;
+               Print("Found valid bullish FVG i = 1");
                if(closeAboveSMA) {
                   Print("Price is above SMA" + IntegerToString(SMA_Period));
                   return LONG;
@@ -673,8 +692,17 @@ TRADE_DIRECTION CheckForEntrySignals() {
          Print("Found swing highs rejecting key level");
          if(closeBelowPrevSwingLow || closeBelowBullishFVGs || prevBullishFVGsFilled) {
             Print("Price is below a swing low or bullish FVG");
-            if(formedBearishFVG) {
-               Print("Found at least 1 valid bearish FVG");
+
+            if(formedBearishFVG0 && bouncingOnBearishFVG0) {
+               state.FVGindexUsed = 0;
+               Print("Found valid bearish FVG i = 0");
+               if(closeBelowSMA) {
+                  Print("Price is below SMA" + IntegerToString(SMA_Period));
+                  return SHORT;
+               }
+            } else if(formedBearishFVG1 && bouncingOnBearishFVG1) {
+               state.FVGindexUsed = 1;
+               Print("Found valid bearish FVG i = 1");
                if(closeBelowSMA) {
                   Print("Price is below SMA" + IntegerToString(SMA_Period));
                   return SHORT;
@@ -709,7 +737,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         lowestFVGCandleLow = MathMin(iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar), iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[0].bar + 1));
+         lowestFVGCandleLow = MathMin(iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[state.FVGindexUsed].bar), iLow(_Symbol, PERIOD_CURRENT, state.bullishFVGs[state.FVGindexUsed].bar + 1));
          stopLoss = lowestFVGCandleLow - (BufferPips * GetPipValue());
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
@@ -737,7 +765,7 @@ void ExecuteTradeSignal(TRADE_DIRECTION signal) {
 
          // Calculate trade parameters
          entryPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-         highestFVGCandleHigh = MathMax(iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar), iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[0].bar + 1));
+         highestFVGCandleHigh = MathMax(iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[state.FVGindexUsed].bar), iHigh(_Symbol, PERIOD_CURRENT, state.bearishFVGs[state.FVGindexUsed].bar + 1));
          stopLoss = highestFVGCandleHigh + (BufferPips * GetPipValue());
          takeProfit = CalculateTpPrice(entryPrice, stopLoss, MinRRR);
          lotSize = CalculateLotSize(RiskDollars, entryPrice, stopLoss, true);
