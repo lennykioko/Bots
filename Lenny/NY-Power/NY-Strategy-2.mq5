@@ -808,67 +808,9 @@ void ManagePositions() {
          double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
          double slPrice = PositionGetDouble(POSITION_SL);
          double tpPrice = PositionGetDouble(POSITION_TP);
-
-         double prevOpen = iOpen(_Symbol, PERIOD_CURRENT, 1);
-         double prevClose = iClose(_Symbol, PERIOD_CURRENT, 1);
-         double prevHigh = iHigh(_Symbol, PERIOD_CURRENT, 1);
-         double prevLow = iLow(_Symbol, PERIOD_CURRENT, 1);
          double currentPrice = (posType == POSITION_TYPE_BUY) ?
                                SymbolInfoDouble(_Symbol, SYMBOL_BID) :
                                SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         double positionProfit = PositionGetDouble(POSITION_PROFIT);
-
-         // close if candle closes below the two prev swing lows and opens and closes below SMA and is below prev candle low
-         // buy checks
-         double closeBelowPrevSwingLows = prevClose < state.swingLows[0].price || prevClose < state.swingLows[1].price;
-         double closedBelowPrevSwingHighs = prevClose < state.swingHighs[0].price || prevClose < state.swingHighs[1].price;
-         double opencloseBelowSMA = !CheckIsAboveSMA(prevClose, SMA_Period) && !CheckIsAboveSMA(prevOpen, SMA_Period);
-         double currentBelowPrevLow = currentPrice < prevLow;
-
-         if(posType == POSITION_TYPE_BUY) {
-            if(closeBelowPrevSwingLows && closedBelowPrevSwingHighs && opencloseBelowSMA && currentBelowPrevLow) {
-               if(!trade.PositionClose(ticket)) {
-                  Print("Failed to close long position. Error: ", GetLastError());
-               } else {
-                  Print("Long position closed successfully. Ticket: ", ticket);
-                  messageText = "Long position closed successfully." +
-                           " Symbol: " + _Symbol +
-                           " Ticket: " + DoubleToString(ticket) +
-                           " Entry: " + DoubleToString(openPrice, _Digits) +
-                           " Current: " + DoubleToString(currentPrice, _Digits) +
-                           " Profit: " + DoubleToString(positionProfit, 2) +
-                           " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
-                           " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-                  SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
-               }
-            }
-         }
-
-         // close if candle closes above the two prev swing highs and opens and closes above SMA and is above prev candle high
-         // sell checks
-         double closeAbovePrevSwingHighs = prevClose > state.swingHighs[0].price || prevClose > state.swingHighs[1].price;
-         double closedAbovePrevSwingLows = prevClose > state.swingLows[0].price || prevClose > state.swingLows[1].price;
-         double opencloseAboveSMA = CheckIsAboveSMA(prevClose, SMA_Period) && CheckIsAboveSMA(prevOpen, SMA_Period);
-         double currentAbovePrevHigh = currentPrice > prevHigh;
-
-         if(posType == POSITION_TYPE_SELL) {
-            if(closeAbovePrevSwingHighs && closedAbovePrevSwingLows && opencloseAboveSMA && currentAbovePrevHigh) {
-               if(!trade.PositionClose(ticket)) {
-                  Print("Failed to close long position. Error: ", GetLastError());
-               } else {
-                  Print("Short position closed successfully. Ticket: ", ticket);
-                  messageText = "Short position closed successfully." +
-                           " Symbol: " + _Symbol +
-                           " Ticket: " + DoubleToString(ticket) +
-                           " Entry: " + DoubleToString(openPrice, _Digits) +
-                           " Current: " + DoubleToString(currentPrice, _Digits) +
-                           " Profit: " + DoubleToString(positionProfit, 2) +
-                           " Day P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startDayBalance, 2) +
-                           " Month P/L: " + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE) - state.startMonthBalance, 2);
-                  SendTelegramAlert(botToken, chatId, messageText, EnableTelegramAlerts);
-               }
-            }
-         }
 
          // trade status management
          if(state.tradeStatus == ACTIVE) {
