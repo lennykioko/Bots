@@ -131,7 +131,7 @@ string messageText = ""; // Message text for Telegram alerts
 int OnInit() {
    // Clear chart objects and set timer
    ObjectsDeleteAll(ChartID(), "");
-   EventSetTimer(2);
+   EventSetTimer(5);
 
    // Initialize strategy state
    state.startDayBalance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -850,14 +850,14 @@ void ManagePositions() {
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                }
 
-               if(currentPrice < slPrice) {
+               if(currentPrice <= slPrice) {
                   state.tradeStatus = STOPLOSS;
                   Print("Stop loss hit for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Stop loss hit for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-               if(currentPrice > tpPrice) {
+               if(currentPrice >= tpPrice) {
                   state.tradeStatus = TAKEPROFIT;
                   Print("Take profit hit for long position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Take profit hit for long position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
@@ -873,14 +873,14 @@ void ManagePositions() {
                   SendTelegramAlert(botToken, chatId, "Trade moved to breakeven for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                }
 
-               if(currentPrice > slPrice) {
+               if(currentPrice >= slPrice) {
                   state.tradeStatus = STOPLOSS;
                   Print("Stop loss hit for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Stop loss hit for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
                   state.tradeStatus = NONE; // Reset trade status
                }
 
-               if(currentPrice < tpPrice) {
+               if(currentPrice <= tpPrice) {
                   state.tradeStatus = TAKEPROFIT;
                   Print("Take profit hit for short position ticket: ", DoubleToString(ticket));
                   SendTelegramAlert(botToken, chatId, "Take profit hit for short position ticket: " + DoubleToString(ticket), EnableTelegramAlerts);
